@@ -1,0 +1,9 @@
+.clangd
+.cproject
+.project
+.settings/
+sdkconfig.ci
+sdkconfig.old
+build/
+managed_components/
+

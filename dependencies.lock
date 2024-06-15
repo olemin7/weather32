@@ -1,0 +1,33 @@
+dependencies:
+  espressif/esp-idf-cxx:
+    component_hash: 2fa63e4e725f0c2d3dd6d99da8a91d404b4b49667088b1be0f336eb9c13ff17f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 1.0.2-beta
+  espressif/esp_mqtt_cxx:
+    component_hash: 08c9cfd2aa1eb9b3f8064e0d7ba9c8a341dd86caa8f9ae7fc5b882e5b473c79f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.3.0
+  espressif/network_provisioning:
+    component_hash: 442a59c2e273214af0d70a03435abb270b4d69008800b75d0fa726dad60fb578
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.2.0
+  espressif/qrcode:
+    component_hash: 3b493771bc5d6ad30cbf87c25bf784aada8a08c941504355b55d6b75518ed7bc
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.1.0~2
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 5.3.0
+manifest_hash: 7a81c7d85023f590967160e9c522cb39eb0876b6dcc2182ec3c2326a3f7462ce
+target: esp32c3
+version: 1.0.0
