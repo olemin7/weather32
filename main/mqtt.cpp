@@ -56,5 +56,7 @@ void mqtt_main()
     mqtt::Configuration config{};
 
     MyClient client{broker, credentials, config};
- 
+    while (1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }
