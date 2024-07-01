@@ -31,6 +31,7 @@ MyClient::MyClient(const idf::mqtt::BrokerConfiguration &broker, const idf::mqtt
     esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
     esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
     }
+
 void MyClient::on_connected(esp_mqtt_event_handle_t const event) 
 {
     using mqtt::QoS;
@@ -47,16 +48,6 @@ void MyClient::on_data(esp_mqtt_event_handle_t const event)
 
 void mqtt_main()
 {
-
- //   esp_log_level_set("*", ESP_LOG_INFO);
-
-
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-
     mqtt::BrokerConfiguration broker{
         .address = {mqtt::URI{std::string{CONFIG_BROKER_URL}}},
         .security =  mqtt::Insecure{}
