@@ -1,4 +1,10 @@
 dependencies:
+  espressif/cmake_utilities:
+    component_hash: 351350613ceafba240b761b4ea991e0f231ac7a9f59a9ee901f751bddc0bb18f
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 0.5.3
   espressif/esp-idf-cxx:
     component_hash: 2fa63e4e725f0c2d3dd6d99da8a91d404b4b49667088b1be0f336eb9c13ff17f
     source:
@@ -28,6 +34,6 @@ dependencies:
     source:
       type: idf
     version: 5.3.0
-manifest_hash: 7a81c7d85023f590967160e9c522cb39eb0876b6dcc2182ec3c2326a3f7462ce
+manifest_hash: 45e069e74c6dda2bedb4ab02900852616c64739e0f0cb3b2d04e206a182d2b70
 target: esp32c3
 version: 1.0.0

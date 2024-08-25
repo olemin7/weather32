@@ -1,4 +1,4 @@
-menu "app Configuration"
+menu "App Configuration"
 
     choice EXAMPLE_PROV_TRANSPORT
         bool "Provisioning Transport"
@@ -98,11 +98,20 @@ menu "app Configuration"
         help
             This enables BLE 4.2 features for Bluedroid.
 
+     config BROKER_URL
+            string "MQTT Broker URL"
+            default "mqtt://mqtt.eclipseprojects.io"
+            help
+                URL of the broker to connect to
 endmenu
-menu "app Configuration mqtt"
- config BROKER_URL
-        string "Broker URL"
-        default "mqtt://mqtt.eclipseprojects.io"
-        help
-            URL of the broker to connect to
+
+menu "Board Configuration"
+    config I2C_MASTER_SCL_IO
+            int
+            default 9
+            prompt "I2C_MASTER_SCL_IO"
+    config I2C_MASTER_SDA_IO
+            int
+            default 8
+            prompt "I2C_MASTER_SDA_IO"
 endmenu

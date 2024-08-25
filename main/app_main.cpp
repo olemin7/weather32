@@ -34,10 +34,13 @@
 #include "provision.h"
 #include "mqtt.hpp"
 #include "blink.hpp"
+#include "sensors.hpp"
+
+using namespace std::chrono_literals;
 
 std::shared_ptr<idf::event::ESPEventLoop> el;
-
-static const char* TAG = "app";
+sensors::CManager                         sensors_mng;
+static const char*                        TAG = "app";
 
 void print_info() {
     /* Print chip information */
@@ -67,6 +70,7 @@ void print_info() {
 }
 
 void init() {
+    esp_log_level_set("Sensors", ESP_LOG_DEBUG);
     /* Initialize NVS partition */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -85,6 +89,7 @@ void init() {
     el = std::make_shared<idf::event::ESPEventLoop>();
 
     blink::init();
+    sensors_mng.init();
 }
 
 ESP_EVENT_DEFINE_BASE(TEST_EVENT_BASE);
@@ -108,15 +113,7 @@ extern "C" void app_main(void) {
     // xTaskCreate(led_task, "led_task", 4096, NULL, 5, &led_task_handle);
     ESP_LOGI(TAG, "started");
     blink::set(blink::led_state_e::SLOW);
-    //    {
-    //        auto tmp = led_messages_e::LED_BLINK_FAST_START;
-    //        loop.post_event_data(TEMPLATE_EVENT_0, tmp);
-    //    }
-    idf::esp_timer::ESPTimer timer([]() {
-        ESP_LOGI(TAG, "timeout");
-        el->post_event_data(TEMPLATE_EVENT_0);
-    });
-    timer.start(std::chrono::seconds(5));
+    sensors_mng.begin([](auto result) { ESP_LOGI(TAG, "result %d", static_cast<int>(result.status)); }, 5s);
     while (1) {
         //        ESP_LOGI(TAG, "Turning the LED %s!", s_led_state == true ? "ON" : "OFF");
         //        gpio_set_level(BLINK_GPIO, s_led_state);

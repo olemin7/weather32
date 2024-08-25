@@ -1,127 +1,142 @@
 /*
- * sensors.cpp
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
- *  Created on: Jun 24, 2023
- *      Author: oleksandr
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "sensors.h"
-#include <chrono>
+#include "sensors.hpp"
+#include "sdkconfig.h"
 
-#include <Arduino.h>
-#include <BH1750.h>
-#include "SparkFunBME280.h"
-#include <Wire.h>
-#include <SHT31.h>
-#include <eventloop.h>
-#include <logs.h>
-#include <misk.h>
+#include <memory>
+#include <stdio.h>
+#include <utility>
+#include "unity.h"
+#include "esp_log.h"
+#include "driver/i2c.h"
+#include "bme280.h"
+#include "esp_timer_cxx.hpp"
 
-namespace sensor {
 using namespace std::chrono_literals;
 
-BME280         bme280;
-BH1750         bh1750(0x23); // 0x23 or 0x5C
-SHT31          sht;
-constexpr auto DHTPin  = D4;
-constexpr auto ADC_pin = A0;
+namespace sensors {
 
-constexpr auto     measuring_timeout = 20ms;
-event_loop::pevent p_bmp_timer;
+#define I2C_MASTER_NUM I2C_NUM_0 /*!< I2C port number for master bme280 */
+#define I2C_MASTER_TX_BUF_DISABLE 0 /*!< I2C master do not need buffer */
+#define I2C_MASTER_RX_BUF_DISABLE 0 /*!< I2C master do not need buffer */
+#define I2C_MASTER_FREQ_HZ 100000 /*!< I2C master clock frequency */
+static const char* TAG = "Sensors";
 
-void init() {
-    DBG_FUNK();
-    bme280.setI2CAddress(0x76);
-    if (!bme280.beginI2C()) {
-        DBG_OUT << "BME280 init fail" << std::endl;
-    } else {
-        bme280.setMode(MODE_SLEEP); // Sleep for now
-        DBG_OUT << "BME280 init ok, id=" << static_cast<unsigned>(bme280.readRegister(BME280_CHIP_ID_REG)) << std::endl;
-    }
-    if (!bh1750.begin(BH1750::ONE_TIME_HIGH_RES_MODE)) {
-        DBG_OUT << "BH1750 init fail" << std::endl;
-    } else {
-        DBG_OUT << "BH1750 init ok" << std::endl;
-    }
-    if (sht.begin(0x44) && sht.isConnected()) {
-        DBG_OUT << "sht connected, status=" << to_hex(sht.readStatus()) << std::endl;
-    } else {
-        DBG_OUT << "sht init fail" << std::endl;
+class CManager::Impl {
+ private:
+    static constexpr auto                     BME280_RETRY_TM = 100ms;
+    i2c_bus_handle_t                          i2c_bus         = NULL;
+    bme280_handle_t                           bme280          = NULL;
+    cb_t                                      cb_;
+    result_t                                  result_;
+    std::unique_ptr<idf::esp_timer::ESPTimer> timeout_tm_;
+    idf::esp_timer::ESPTimer                  bme280_tm_;
+
+    void reset_data() {
+        result_.bme280.reset();
     }
 
-    pinMode(ADC_pin, INPUT);
-}
+    void trigger_cb(const status_t status) {
+        if (cb_) {
+            result_.status = status;
+            cb_(result_);
+            cb_ = nullptr;
+        }
+        reset_data();
+    }
 
-void power_off() {
-    bme280.setMode(MODE_SLEEP);
-    bh1750.configure(BH1750::UNCONFIGURED);
-    sht.heatOff();
-}
+    void updated() {
+        if (!result_.bme280) {
+            return;
+        }
+        timeout_tm_.reset();
+        trigger_cb(status_t::ok);
+    }
 
-void bme280_get(
-    std::function<void(const float temperature, const float pressure, const float humidity, const bool is_successful)>
-        cb) {
-    bme280.setMode(MODE_FORCED); // Wake up sensor and take reading
-    while (bme280.isMeasuring()) {
-    }; // waiting for initial state
-
-    static event_loop::pevent p_timer;
-    p_timer = event_loop::set_interval( // wait for finish measure
-        [cb = std::move(cb)]() {
-            if (bme280.isMeasuring() == false) {
-                p_timer->cancel();
-                BME280_SensorMeasurements measurements;
-                bme280.readAllMeasurements(&measurements, 0);
-                measurements.pressure /= 100;
-                DBG_OUT << "temp= " << measurements.temperature << ", pressure=" << measurements.pressure
-                        << ", humidity=" << measurements.humidity << std::endl;
-
-                cb(measurements.temperature, measurements.pressure, measurements.humidity, true);
+    void bme280_handler() {
+        bme280_t data;
+        if (ESP_OK == bme280_read_temperature(bme280, &data.temperature)) {
+            ESP_LOGD(TAG, "temperature:%f ", data.temperature);
+            if (ESP_OK == bme280_read_humidity(bme280, &data.humidity)) {
+                ESP_LOGD(TAG, "humidity:%f ", data.humidity);
+                if (ESP_OK == bme280_read_pressure(bme280, &data.pressure)) {
+                    ESP_LOGD(TAG, "pressure:%f\n", data.pressure);
+                    result_.bme280 = data;
+                    updated();
+                    return;
+                }
             }
-        },
-        measuring_timeout, false);
+        }
+        ESP_LOGI(TAG, "bme280_retry");
+        bme280_tm_.start(BME280_RETRY_TM);
+    }
+
+ public:
+    Impl()
+        : bme280_tm_([this]() { bme280_handler(); }) {
+        ESP_LOGI(TAG, "CManager::Impl created");
+        ESP_LOGD(TAG, "i2c_master_scl_io:%d i2c_master_sda_io:%d", CONFIG_I2C_MASTER_SCL_IO, CONFIG_I2C_MASTER_SDA_IO);
+        i2c_config_t conf = {
+            .mode          = I2C_MODE_MASTER,
+            .sda_io_num    = CONFIG_I2C_MASTER_SDA_IO,
+            .scl_io_num    = CONFIG_I2C_MASTER_SCL_IO,
+            .sda_pullup_en = GPIO_PULLUP_ENABLE,
+            .scl_pullup_en = GPIO_PULLUP_ENABLE,
+            .master        = { .clk_speed = I2C_MASTER_FREQ_HZ },
+            .clk_flags     = {},
+        };
+        i2c_bus = i2c_bus_create(I2C_MASTER_NUM, &conf);
+        bme280  = bme280_create(i2c_bus, BME280_I2C_ADDRESS_DEFAULT);
+    }
+
+    ~Impl() {
+        ESP_LOGI(TAG, "CManager::Impl deleted");
+        bme280_delete(&bme280);
+        i2c_bus_delete(&i2c_bus);
+    }
+
+    void init() {
+        reset_data();
+        ESP_LOGI(TAG, "bme280_default_init:%d", bme280_default_init(bme280));
+    }
+
+    void begin(cb_t&& cb, std::chrono::milliseconds timeout) {
+        ESP_LOGI(TAG, "begin, tm:%lld", timeout.count());
+        reset_data();
+        cb_         = std::move(cb);
+        timeout_tm_ = std::make_unique<idf::esp_timer::ESPTimer>([this]() {
+            ESP_LOGI(TAG, "timeout");
+            trigger_cb(status_t::timeout);
+        });
+        timeout_tm_->start(timeout);
+        bme280_tm_.start(0s);
+    }
+
+    void stop() {
+        timeout_tm_.reset();
+        trigger_cb(status_t::stoped);
+    }
+};
+
+CManager::CManager()  = default;
+CManager::~CManager() = default;
+
+void CManager::init() {
+    impl_ = std::make_unique<CManager::Impl>();
+    impl_->init();
 }
 
-void sth30_get(std::function<void(const float temperature, const float humidity, const bool is_successful)> cb) {
-    sht.requestData();
-    static event_loop::pevent p_timer;
-    p_timer = event_loop::set_interval(
-        [cb = std::move(cb)]() {
-            if (sht.readData()) {
-                const auto temperature = sht.getTemperature();
-                const auto humidity    = sht.getHumidity();
-                DBG_OUT << "temperature= " << temperature << ", humidity=" << humidity << std::endl;
-                p_timer->cancel();
-                cb(temperature, humidity, true);
-            }
-        },
-        measuring_timeout, true);
+void CManager::begin(cb_t&& cb, std::chrono::milliseconds timeout) {
+    if (!impl_) {
+        init();
+    }
+    impl_->begin(std::move(cb), timeout);
 }
-
-void bh1750_light_get(std::function<void(const float lux)> cb) {
-    static event_loop::pevent p_timer;
-    p_timer = event_loop::set_interval(
-        [cb = std::move(cb)]() {
-            if (bh1750.measurementReady()) {
-                const auto lux = bh1750.readLightLevel();
-                DBG_OUT << "ambient_light= " << lux << "lx" << std::endl;
-                p_timer->cancel();
-                cb(lux);
-            }
-        },
-        measuring_timeout, true);
+void CManager::stop() {
+    impl_->stop();
 }
-
-void battery_get(std::function<void(const float volt)> cb) {
-    const auto first = analogRead(ADC_pin);
-    event_loop::set_timeout(
-        [first, cb = std::move(cb)]() {
-            const auto val  = (first + analogRead(ADC_pin)) / 2;
-            const auto volt = static_cast<float>(val) * 4.1 / 954; //(133 + 220 + 100) / 100 / 1024;
-            DBG_OUT << "adc val= " << val << ",volt=" << volt << std::endl;
-            cb(volt);
-        },
-        300ms);
-}
-
-} // namespace sensor
+} // namespace sensors
