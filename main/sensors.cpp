@@ -10,7 +10,6 @@
 #include <memory>
 #include <stdio.h>
 #include <utility>
-#include "unity.h"
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "bme280.h"
@@ -24,17 +23,87 @@ namespace sensors {
 #define I2C_MASTER_TX_BUF_DISABLE 0 /*!< I2C master do not need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE 0 /*!< I2C master do not need buffer */
 #define I2C_MASTER_FREQ_HZ 100000 /*!< I2C master clock frequency */
-static const char* TAG = "Sensors";
+static const char* TAG = "SENSORS";
+
+class CBME260_wrapper {
+ protected:
+    using cb_t                                                = std::function<void(const bme280_t&&)>;
+    static constexpr auto                     BME280_RETRY_TM = 100ms;
+    bme280_handle_t                           bme280_id;
+    std::unique_ptr<idf::esp_timer::ESPTimer> retry_tm_;
+    cb_t                                      cb_;
+
+    void read() {
+        bme280_t data;
+        if (ESP_OK == bme280_read_temperature(bme280_id, &data.temperature)) {
+            ESP_LOGD(TAG, "temperature:%f ", data.temperature);
+            if (ESP_OK == bme280_read_humidity(bme280_id, &data.humidity)) {
+                ESP_LOGD(TAG, "humidity:%f ", data.humidity);
+                if (ESP_OK == bme280_read_pressure(bme280_id, &data.pressure)) {
+                    ESP_LOGD(TAG, "pressure:%f\n", data.pressure);
+                    retry_tm_.reset();
+                    cb_(std::move(data));
+                    return;
+                }
+            }
+        }
+        ESP_LOGI(TAG, "bme280_retry");
+        if (!retry_tm_) {
+            retry_tm_ = std::make_unique<idf::esp_timer::ESPTimer>([this]() { read(); });
+        }
+        retry_tm_->start(BME280_RETRY_TM);
+    }
+
+ public:
+    CBME260_wrapper(i2c_bus_handle_t& i2c_bus) {
+        bme280_id = bme280_create(i2c_bus, BME280_I2C_ADDRESS_DEFAULT);
+    }
+    ~CBME260_wrapper() {
+        bme280_delete(&bme280_id);
+    }
+
+    void set_mode(bme280_sensor_mode mode) {
+        const auto res = bme280_set_sampling(bme280_id, mode, BME280_SAMPLING_X16, BME280_SAMPLING_X16,
+            BME280_SAMPLING_X16, BME280_FILTER_OFF, BME280_STANDBY_MS_0_5);
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "bme280_set_mode %d, result=%d", static_cast<int>(mode), static_cast<int>(res));
+        }
+    }
+    void init() {
+        const auto res = bme280_default_init(bme280_id);
+        ESP_LOGI(TAG, "bme280_default_init:%d", res);
+    }
+
+    void begin(cb_t&& cb) {
+        cb_ = std::move(cb);
+        read();
+    }
+};
+
+class CBME260_wrapper_forced: private CBME260_wrapper {
+ public:
+    CBME260_wrapper_forced(i2c_bus_handle_t& i2c_bus)
+        : CBME260_wrapper(i2c_bus) {
+        init();
+        set_mode(BME280_MODE_FORCED);
+    }
+    ~CBME260_wrapper_forced() {
+        set_mode(BME280_MODE_SLEEP);
+    }
+    void begin(cb_t&& cb) {
+        const auto res = bme280_take_forced_measurement(bme280_id);
+        ESP_LOGI(TAG, "bme280_take_forced_measurement:%d", res);
+        CBME260_wrapper::begin(std::move(cb));
+    }
+};
 
 class CManager::Impl {
  private:
-    static constexpr auto                     BME280_RETRY_TM = 100ms;
-    i2c_bus_handle_t                          i2c_bus         = NULL;
-    bme280_handle_t                           bme280          = NULL;
+    i2c_bus_handle_t                          i2c_bus;
     cb_t                                      cb_;
     result_t                                  result_;
     std::unique_ptr<idf::esp_timer::ESPTimer> timeout_tm_;
-    idf::esp_timer::ESPTimer                  bme280_tm_;
+    std::unique_ptr<CBME260_wrapper_forced>   bme280_;
 
     void reset_data() {
         result_.bme280.reset();
@@ -46,6 +115,7 @@ class CManager::Impl {
             cb_(result_);
             cb_ = nullptr;
         }
+        timeout_tm_.reset();
         reset_data();
     }
 
@@ -53,31 +123,11 @@ class CManager::Impl {
         if (!result_.bme280) {
             return;
         }
-        timeout_tm_.reset();
         trigger_cb(status_t::ok);
     }
 
-    void bme280_handler() {
-        bme280_t data;
-        if (ESP_OK == bme280_read_temperature(bme280, &data.temperature)) {
-            ESP_LOGD(TAG, "temperature:%f ", data.temperature);
-            if (ESP_OK == bme280_read_humidity(bme280, &data.humidity)) {
-                ESP_LOGD(TAG, "humidity:%f ", data.humidity);
-                if (ESP_OK == bme280_read_pressure(bme280, &data.pressure)) {
-                    ESP_LOGD(TAG, "pressure:%f\n", data.pressure);
-                    result_.bme280 = data;
-                    updated();
-                    return;
-                }
-            }
-        }
-        ESP_LOGI(TAG, "bme280_retry");
-        bme280_tm_.start(BME280_RETRY_TM);
-    }
-
  public:
-    Impl()
-        : bme280_tm_([this]() { bme280_handler(); }) {
+    Impl() {
         ESP_LOGI(TAG, "CManager::Impl created");
         ESP_LOGD(TAG, "i2c_master_scl_io:%d i2c_master_sda_io:%d", CONFIG_I2C_MASTER_SCL_IO, CONFIG_I2C_MASTER_SDA_IO);
         i2c_config_t conf = {
@@ -90,34 +140,35 @@ class CManager::Impl {
             .clk_flags     = {},
         };
         i2c_bus = i2c_bus_create(I2C_MASTER_NUM, &conf);
-        bme280  = bme280_create(i2c_bus, BME280_I2C_ADDRESS_DEFAULT);
+        bme280_ = std::make_unique<CBME260_wrapper_forced>(i2c_bus);
     }
 
     ~Impl() {
         ESP_LOGI(TAG, "CManager::Impl deleted");
-        bme280_delete(&bme280);
         i2c_bus_delete(&i2c_bus);
     }
 
     void init() {
         reset_data();
-        ESP_LOGI(TAG, "bme280_default_init:%d", bme280_default_init(bme280));
     }
 
     void begin(cb_t&& cb, std::chrono::milliseconds timeout) {
         ESP_LOGI(TAG, "begin, tm:%lld", timeout.count());
         reset_data();
+
         cb_         = std::move(cb);
         timeout_tm_ = std::make_unique<idf::esp_timer::ESPTimer>([this]() {
             ESP_LOGI(TAG, "timeout");
             trigger_cb(status_t::timeout);
         });
         timeout_tm_->start(timeout);
-        bme280_tm_.start(0s);
+        bme280_->begin([this](auto res) {
+            result_.bme280 = std::move(res);
+            updated();
+        });
     }
 
     void stop() {
-        timeout_tm_.reset();
         trigger_cb(status_t::stoped);
     }
 };

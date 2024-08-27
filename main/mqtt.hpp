@@ -6,22 +6,22 @@
  */
 
 #pragma once
+#include <memory>
+#include <string.h>
 #include "esp_mqtt.hpp"
 #include "esp_mqtt_client_config.hpp"
 
-class MyClient  : public idf::mqtt::Client {
-public:
-  MyClient(const idf::mqtt::BrokerConfiguration &broker, const idf::mqtt::ClientCredentials &credentials, const idf::mqtt::Configuration &config);
- 
+namespace mqtt {
+class CMQTTManager {
+ public:
+    CMQTTManager();
+    ~CMQTTManager();
+    void init();
+    void publish(const std::string& topic, const std::string& message);
 
-  private:
-  void              on_connected(esp_mqtt_event_handle_t const event) override;
-  void              on_data(esp_mqtt_event_handle_t const event) override;
-  idf::mqtt::Filter messages{ "$SYS/broker/messages/received" };
-  idf::mqtt::Filter sent_load{ "$SYS/broker/load/+/sent" };
+ private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
-void mqtt_main();
-
-
-
+} // namespace mqtt

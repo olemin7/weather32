@@ -100,9 +100,14 @@ menu "App Configuration"
 
      config BROKER_URL
             string "MQTT Broker URL"
-            default "mqtt://mqtt.eclipseprojects.io"
+            default "mqtt://nas.local"
             help
                 URL of the broker to connect to
+                
+     config SENSORS_COLLECTION_TIMEOUT
+            int
+            default 5
+            prompt "Sensors collection timeout(sec) "
 endmenu
 
 menu "Board Configuration"

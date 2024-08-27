@@ -16,47 +16,80 @@
 #include "nvs_flash.h"
 
 #include "esp_log.h"
+#include <memory>
+#include <queue>
+#include "sdkconfig.h"
 
-namespace mqtt = idf::mqtt;
+namespace mqtt {
+namespace imqtt = idf::mqtt;
 
-constexpr auto *TAG = "MQTT";
+constexpr auto* TAG = "MQTT";
 
-MyClient::MyClient(const idf::mqtt::BrokerConfiguration &broker, const idf::mqtt::ClientCredentials &credentials, const idf::mqtt::Configuration &config):
-  idf::mqtt::Client(broker,credentials,config)
-  { 
-	esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
-    esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
-    esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
+class CMQTTManager::Impl: public imqtt::Client {
+ public:
+    Impl(const imqtt::BrokerConfiguration& broker, const imqtt::ClientCredentials& credentials,
+        const imqtt::Configuration& config)
+        : imqtt::Client(broker, credentials, config) {
+        /*  esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
+            esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
+            esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
+            esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
+            esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
+            esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);*/
+    }
+    void publish(const std::string& topic, const std::string& message) {
+        ESP_LOGD(TAG, "add topic:%s msg:%s", topic.c_str(), message.c_str());
+        send_queue_.push({ topic, message });
+        send_queue();
     }
 
-void MyClient::on_connected(esp_mqtt_event_handle_t const event) 
-{
-    using mqtt::QoS;
-    subscribe(messages.get());
-    subscribe(sent_load.get(), QoS::AtMostOnce);
-}
-void MyClient::on_data(esp_mqtt_event_handle_t const event) 
-{
-    if (messages.match(event->topic, event->topic_len)) {
-        ESP_LOGI(TAG, "Received in the messages topic");
-    }
-}
-
-
-void mqtt_main()
-{
-    mqtt::BrokerConfiguration broker{
-        .address = {mqtt::URI{std::string{CONFIG_BROKER_URL}}},
-        .security =  mqtt::Insecure{}
+ private:
+    using msg_queue_t = struct {
+        std::string topic;
+        std::string msg;
     };
-    mqtt::ClientCredentials credentials{};
-    mqtt::Configuration config{};
-
-    MyClient client{broker, credentials, config};
-    while (1) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    std::queue<msg_queue_t> send_queue_;
+    bool                    is_connected_ = false;
+    void                    send_queue() {
+        ESP_LOGI(TAG, "send_queue sz=%d", send_queue_.size());
+        if (is_connected_ && send_queue_.size()) {
+            imqtt::Client::publish(send_queue_.front().topic, imqtt::StringMessage(send_queue_.front().msg));
+        }
     }
+    void on_published(const esp_mqtt_event_handle_t /*event*/) final {
+        ESP_LOGI(TAG, "on_published");
+        send_queue_.pop();
+        send_queue();
+    }
+    void on_connected(esp_mqtt_event_handle_t const /*event*/) final {
+        ESP_LOGI(TAG, "connected");
+        is_connected_ = true;
+        send_queue();
+    }
+    void on_disconnected(const esp_mqtt_event_handle_t event) final {
+        ESP_LOGI(TAG, "disconnected");
+        is_connected_ = false;
+    }
+    void on_data(esp_mqtt_event_handle_t const /*event*/) final {}
+};
+
+CMQTTManager::CMQTTManager() {
+    ESP_LOGD(TAG, "mqtt_wrapper construct");
+};
+
+CMQTTManager::~CMQTTManager() = default;
+
+void CMQTTManager::init() {
+    ESP_LOGI(TAG, "CONFIG_BROKER_URL %s", CONFIG_BROKER_URL);
+    imqtt::BrokerConfiguration broker{ .address = { imqtt::URI{ std::string{ CONFIG_BROKER_URL } } },
+        .security                               = imqtt::Insecure{} };
+    imqtt::ClientCredentials   credentials{};
+    imqtt::Configuration       config{};
+    impl_ = std::make_unique<Impl>(broker, credentials, config);
 }
+
+void CMQTTManager::publish(const std::string& topic, const std::string& message) {
+    impl_->publish(topic, message);
+}
+
+} // namespace mqtt

@@ -42,3 +42,13 @@ idf.py menuconfig
 null in the env https://github.com/espressif/idf-eclipse-plugin/issues/535https://components.espressif.com/
 
 Check the values in your sdkconfig for LOG_MAXIMUM_LEVEL. It defaults to matching LOG_DEFAULT_LEVEL which limits what values you can use by default.
+
+
+[mqtt test]
+one terminal
+mosquitto_sub -d -t hello/world
+mosquitto_sub -d -t stat/weather -h central.local
+Connect to another ssh session and run
+mosquitto_pub -d -t hello/world -m "Hello from terminal window 2!"
+mosquitto_pub -h central.local -d -t stat/pr_clock -m "Hello from terminal window 2!"
+sudo tail -f /var/log/mosquitto/mosquitto.log
