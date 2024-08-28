@@ -8,6 +8,7 @@
 #pragma once
 #include <memory>
 #include <string.h>
+#include <chrono>
 #include "esp_mqtt.hpp"
 #include "esp_mqtt_client_config.hpp"
 
@@ -18,6 +19,7 @@ class CMQTTManager {
     ~CMQTTManager();
     void init();
     void publish(const std::string& topic, const std::string& message);
+    bool flush(const std::chrono::milliseconds timeout);
 
  private:
     class Impl;

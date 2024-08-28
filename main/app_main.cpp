@@ -7,6 +7,10 @@
 #include <memory>
 #include <stdio.h>
 #include <inttypes.h>
+#include <chrono>
+#include <iostream>
+
+#include "rom/rtc.h"
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -21,19 +25,19 @@
 #include <nvs_flash.h>
 #include "freertos/queue.h"
 
-#include <chrono>
-
 #include "esp_exception.hpp"
-#include <iostream>
+
 #include "esp_err.h"
 #include "esp_event_cxx.hpp"
 #include "esp_timer_cxx.hpp"
-#include <memory>
 
+#include "json_helper.hpp"
 #include "provision.h"
 #include "mqtt.hpp"
 #include "blink.hpp"
 #include "sensors.hpp"
+#include "deepsleep.hpp"
+#include <math.h>
 
 using namespace std::chrono_literals;
 
@@ -42,10 +46,14 @@ sensors::CManager                         sensors_mng;
 mqtt::CMQTTManager                        mqtt_mng;
 static const char*                        TAG = "APP";
 
+static EventGroupHandle_t app_main_event_group;
+constexpr int             SENSORS_DONE = BIT0;
+
 void print_info() {
     /* Print chip information */
     esp_chip_info_t chip_info;
     uint32_t        flash_size;
+    ESP_LOGI(TAG, "Boot count %d", deepsleep::get_boot_count());
     esp_chip_info(&chip_info);
     ESP_LOGI(TAG, "This is %s chip with %d CPU core(s), %s%s%s%s, ", CONFIG_IDF_TARGET, chip_info.cores,
         (chip_info.features & CHIP_FEATURE_WIFI_BGN) ? "WiFi/" : "", (chip_info.features & CHIP_FEATURE_BT) ? "BT" : "",
@@ -70,6 +78,7 @@ void print_info() {
 }
 
 void init() {
+    app_main_event_group = xEventGroupCreate();
     /* Initialize NVS partition */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -93,22 +102,36 @@ void init() {
 
 extern "C" void app_main(void) {
     ESP_LOGI(TAG, "[APP] Startup..");
-    init();
     print_info();
+    init();
     provision_main();
     mqtt_mng.init();
-
-    // xTaskCreate(led_task, "led_task", 4096, NULL, 5, &led_task_handle);
     ESP_LOGI(TAG, "started");
-    mqtt_mng.publish("hello/world", "const std::string &message");
     blink::set(blink::led_state_e::SLOW);
-    sensors_mng.begin([](auto result) { ESP_LOGI(TAG, "result %d", static_cast<int>(result.status)); },
+
+    auto json_obj = json::CreateObject();
+    cJSON_AddStringToObject(json_obj.get(), "app_name", CONFIG_APP_NAME);
+    cJSON_AddStringToObject(json_obj.get(), "ip", "xx:xx:xx:xx");
+    cJSON_AddStringToObject(json_obj.get(), "mac", "xxxxxxxxx");
+    mqtt_mng.publish(CONFIG_MQTT_TOPIC_ALIVE, PrintUnformatted(json_obj));
+    sensors_mng.begin(
+        [](const auto result) {
+            ESP_LOGI(TAG, "result %d", static_cast<int>(result.status));
+
+            auto sensors_obj = json::CreateObject();
+            if (result.bme280) {
+                AddFormatedToObject(sensors_obj, "temperature", "%.2f", result.bme280->temperature);
+                AddFormatedToObject(sensors_obj, "humidity", "%.2f", result.bme280->humidity);
+                AddFormatedToObject(sensors_obj, "pressure", "%.2f", result.bme280->pressure);
+            }
+            mqtt_mng.publish(CONFIG_MQTT_TOPIC_SENSORS, PrintUnformatted(sensors_obj));
+            xEventGroupSetBits(app_main_event_group, SENSORS_DONE);
+        },
         std::chrono::seconds(CONFIG_SENSORS_COLLECTION_TIMEOUT));
-    while (1) {
-        //        ESP_LOGI(TAG, "Turning the LED %s!", s_led_state == true ? "ON" : "OFF");
-        //        gpio_set_level(BLINK_GPIO, s_led_state);
-        //        /* Toggle the LED state */
-        //        s_led_state = !s_led_state;
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+
+    xEventGroupWaitBits(app_main_event_group, SENSORS_DONE, pdTRUE, pdFALSE, 10000 / portTICK_PERIOD_MS);
+
+    ESP_LOGI(TAG, "wrapping");
+    ESP_LOGI(TAG, "flush %d", mqtt_mng.flush(5s));
+    deepsleep::deep_sleep(std::chrono::seconds(CONFIG_POOL_INTERVAL_DEFAULT));
 }

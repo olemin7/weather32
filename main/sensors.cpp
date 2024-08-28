@@ -110,17 +110,17 @@ class CManager::Impl {
     }
 
     void trigger_cb(const status_t status) {
+        timeout_tm_.reset();
         if (cb_) {
             result_.status = status;
             cb_(result_);
             cb_ = nullptr;
         }
-        timeout_tm_.reset();
         reset_data();
     }
 
     void updated() {
-        if (!result_.bme280) {
+        if (CONFIG_PRESENT_BME280 && !result_.bme280) {
             return;
         }
         trigger_cb(status_t::ok);
@@ -140,7 +140,9 @@ class CManager::Impl {
             .clk_flags     = {},
         };
         i2c_bus = i2c_bus_create(I2C_MASTER_NUM, &conf);
-        bme280_ = std::make_unique<CBME260_wrapper_forced>(i2c_bus);
+        if (CONFIG_PRESENT_BME280) {
+            bme280_ = std::make_unique<CBME260_wrapper_forced>(i2c_bus);
+        }
     }
 
     ~Impl() {
@@ -162,10 +164,13 @@ class CManager::Impl {
             trigger_cb(status_t::timeout);
         });
         timeout_tm_->start(timeout);
-        bme280_->begin([this](auto res) {
-            result_.bme280 = std::move(res);
-            updated();
-        });
+        if (bme280_) {
+            bme280_->begin([this](auto res) {
+                result_.bme280 = std::move(res);
+                updated();
+            });
+        }
+        updated(); // for dummy case
     }
 
     void stop() {

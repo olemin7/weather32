@@ -52,3 +52,5 @@ Connect to another ssh session and run
 mosquitto_pub -d -t hello/world -m "Hello from terminal window 2!"
 mosquitto_pub -h central.local -d -t stat/pr_clock -m "Hello from terminal window 2!"
 sudo tail -f /var/log/mosquitto/mosquitto.log
+
+https://github.com/nopnop2002/esp-idf-json/tree/master/json-basic-object
