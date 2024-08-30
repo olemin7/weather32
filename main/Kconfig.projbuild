@@ -110,9 +110,9 @@ menu "App Configuration"
                 help
                     URL of the broker to connect to
                     
-         config MQTT_TOPIC_ALIVE
-                string "MQTT_TOPIC_ALIVE"
-                default "alive"
+         config MQTT_TOPIC_ADVERTISEMENT
+                string "MQTT_TOPIC_ADVERTISEMENT"
+                default "advertisement"
          config MQTT_TOPIC_SENSORS
                 string "MQTT_TOPIC_SENSORS"
                 default "sensors"
