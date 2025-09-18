@@ -1,24 +1,5 @@
 menu "App Configuration"
-    config APP_NAME
-        string "APP_NAME"
-        default "WEATHER"
-    
     menu "Provision"
-    choice EXAMPLE_PROV_TRANSPORT
-        bool "Provisioning Transport"
-        default EXAMPLE_PROV_TRANSPORT_SOFTAP if IDF_TARGET_ESP32S2
-        default EXAMPLE_PROV_TRANSPORT_BLE
-        help
-            Wi-Fi provisioning component offers both, SoftAP and BLE transports. Choose any one.
-
-        config EXAMPLE_PROV_TRANSPORT_BLE
-            bool "BLE"
-            select BT_ENABLED
-            depends on !IDF_TARGET_ESP32S2
-        config EXAMPLE_PROV_TRANSPORT_SOFTAP
-            bool "Soft AP"
-            select LWIP_IPV4
-    endchoice
 
     choice EXAMPLE_PROV_SECURITY_VERSION
         bool "Protocomm security version"
@@ -62,7 +43,7 @@ menu "App Configuration"
         default 1 if EXAMPLE_PROV_TRANSPORT_BLE
         default 2 if EXAMPLE_PROV_TRANSPORT_SOFTAP
 
-    config EXAMPLE_RESET_PROVISIONED
+    config PROV_RESET
         bool
         default n
         prompt "Reset provisioned status of the device"
@@ -88,12 +69,6 @@ menu "App Configuration"
             are misconfigured. Provisioned credentials are erased and internal state machine
             is reset after this threshold is reached.
 
-    config EXAMPLE_PROV_SHOW_QR
-        bool "Show provisioning QR code"
-        default y
-        help
-            Show the QR code for provisioning.
-
     config EXAMPLE_PROV_USING_BLUEDROID
         bool
         depends on (BT_BLUEDROID_ENABLED && (IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32S3))
@@ -104,18 +79,20 @@ menu "App Configuration"
     endmenu
             
     menu "MQTT Configuration"
-         config BROKER_URL
+        config BROKER_URL
                 string "MQTT Broker URL"
                 default "mqtt://nas.local"
                 help
                     URL of the broker to connect to
                     
-         config MQTT_TOPIC_ADVERTISEMENT
+        config MQTT_TOPIC_ADVERTISEMENT
                 string "MQTT_TOPIC_ADVERTISEMENT"
                 default "advertisement"
-         config MQTT_TOPIC_SENSORS
-                string "MQTT_TOPIC_SENSORS"
-                default "sensors"
+
+        config MQTT_TOPIC_BROADCAST
+            string "message related to all devices"
+            default "brodcast"
+                
     endmenu
                 
     config SENSORS_COLLECTION_TIMEOUT
@@ -140,11 +117,64 @@ menu "App Configuration"
                 int
                 default 8
                 prompt "I2C_MASTER_SDA_IO"
-                
-        config PRESENT_BME280
-            bool "PRESENT_BME280"
-            default y
     endmenu
+
+    menu "Clock"
+        config SNTP_TIME_SERVER
+            string "SNTP server name"
+            default "pool.ntp.org"
+            help
+                Hostname of the main SNTP server.
+        config TIMEZONE
+            string "TIMEZONE"
+            default "EET-2EEST,M3.5.0/3,M10.5.0/4"
+    endmenu
+
+    menu "Sensors"
+        config SENSORS_KA_PERIOD_S
+            int "SENSORS_KA_PERIOD_S"
+            default 600
+            help
+                sensor keep alive period sec, resend value if it unchanged
+        config LIGHTING_REFRESH
+            int "LIGHTING_REFRESH"
+            default 200
+            help
+                LIGHTING_REFRESH ms
+        config LIGHTING_THRESHOLD
+            int "LIGHTING_THRESHOLD"
+            default 10
+        config LIGHTING_MIN_RAW
+            int "LIGHTING_MIN_RAW"
+            default 10
+        config LIGHTING_MAX_RAW
+            int "LIGHTING_MAX_RAW"
+            default 4096
+    endmenu
+
+    menu "Display"
+        config DISPLAY_SEGMENTS
+            int "DISPLAY_SEGMENTS"
+            default 4
+
+        config DISPLAY_SEGMENT_ROTATION
+            int "DISPLAY_SEGMENT_ROTATION"
+            default 3
+            help
+                SEGMENT_ROTATION
+        config DISPLAY_SEGMENT_UPSIDEDOWN
+            int "DISPLAY_SEGMENT_UPSIDEDOWN"
+            default 0
+            help
+                SEGMENT_UPSIDEDOWN
+        config DISPLAY_MIRRORED
+            int "DISPLAY_MIRRORED"
+            default 0
+            help
+                DISPLAY_MIRRORED
+
+    endmenu
+
 endmenu
 
 

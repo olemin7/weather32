@@ -1,6 +1,40 @@
-idf_component_register(SRCS 
-                        "app_main.cpp" "provision.c" "mqtt_wrapper.cpp" "blink.cpp" 
-                        "collector.cpp" "deepsleep.cpp" "utils.cpp" "bme280_wrapper.cpp"
-                        INCLUDE_DIRS "." 
-                    REQUIRES i2c_bus bme280 nvs_flash wifi_provisioning json esp_wifi mqtt
-                    )
+idf_component_register(
+    SRCS
+        "app_main.cpp" 
+        "mqtt/mqtt_wrapper.cpp" 
+        "provision.c"
+        "time/sntp.cpp"
+        "time/clock_tm.cpp"
+        "display/blink.cpp" 
+        "display/font.cpp"
+        "display/screen.cpp"
+        "display/transformation.cpp"
+        "display/layers.cpp"
+        "display/tests.cpp"
+        "sensors/sensor_event.cpp"
+        "sensors/lighting.cpp"
+        "sensors/htu2x.cpp"
+        "proto/json_wrapper.cpp"
+        "proto/handler.cpp"
+        "proto/defines.cpp"
+        "proto/http_server.cpp"
+        "utils/utils.cpp" 
+        "utils/kvs.cpp"
+        #-----------------
+        "test/tst_utils.cpp"
+       
+    INCLUDE_DIRS
+        "." 
+    REQUIRES
+        nvs_flash 
+        wifi_provisioning 
+        json 
+        esp_wifi 
+        mqtt 
+        driver 
+        spi_flash
+        si7021
+        max7219
+        unity
+        esp_http_server
+    )

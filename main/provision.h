@@ -5,14 +5,13 @@
  *      Author: oleksandr
  */
 
-#ifndef MAIN_PROVISION_H_
-#define MAIN_PROVISION_H_
+#pragma once
 #ifdef __cplusplus
 extern "C" {
 #endif
 void provision_main(void);
-
+esp_err_t provision_reset(void);
 #ifdef __cplusplus
 }
 #endif
-#endif /* MAIN_PROVISION_H_ */
+

@@ -6,9 +6,12 @@ dependencies:
   # # Put list of dependencies here
   espressif/esp-idf-cxx: "^1.0.0"
   espressif/esp_mqtt_cxx: "^0.3.0"
-  espressif/qrcode: "^0.1.0"
   espressif/network_provisioning: "^0.2.0"
-  
+  led_indicator:
+    version: '*'
+  button:
+    version: '*'
+
   
   # # For components maintained by Espressif:
   # component: "~1.0.0"
