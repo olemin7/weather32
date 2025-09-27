@@ -1,6 +1,6 @@
 weather stantion
 redused CPU frequency to 80
-## Troubleshooting
+# Troubleshooting
 
 * Program upload failure
 
@@ -17,13 +17,13 @@ GPIO_NUM_0  | A0  |      |photoresistor
 GPIO_NUM_1  | A1  |      |
 GPIO_NUM_2  | A2  |      |
 GPIO_NUM_3  | A3  |      |
-GPIO_NUM_4  | A4  | SCK  | max7219 CLK
+GPIO_NUM_4  | A4  | SCK  | 
 3V3
 GND
 5V
 -------------------------------------
-GPIO_NUM_5  | A5  | MISO | max7219 CS
-GPIO_NUM_6  |     | MOSI | max7219 DIN
+GPIO_NUM_5  | A5  | MISO |
+GPIO_NUM_6  |     | MOSI |
 GPIO_NUM_7  |     | SS   | 
 GPIO_NUM_8  |     | SDA  | LED           |HTU2x SDA
 GPIO_NUM_9  |     | SDL  | BOOT_BUTTON   |HTU2x SDL
@@ -31,7 +31,6 @@ GPIO_NUM_10 |     |      |
 GPIO_NUM_20 |     | RX   |
 GPIO_NUM_21 |     | TX   |
 
-#Display MAX7219 
 
 
 https://github.com/DiegoPaezA/ESP32-freeRTOS/blob/master/i2c_scanner/main/i2c_scanner.c
@@ -48,8 +47,7 @@ null in the env https://github.com/espressif/idf-eclipse-plugin/issues/535https:
 
 Check the values in your sdkconfig for LOG_MAXIMUM_LEVEL. It defaults to matching LOG_DEFAULT_LEVEL which limits what values you can use by default.
 
-
-[mqtt test]
+# mqtt test
 sudo apt-get install mosquitto mosquitto-clients
 
 sudo vim /etc/mosquitto/mosquitto.conf 
@@ -75,16 +73,9 @@ sudo tail -f /var/log/mosquitto/mosquitto.log
 mosquitto_sub -h nas.local -d -t '#'
 https://github.com/nopnop2002/esp-idf-json/tree/master/json-basic-object
 
-[rtc]
-CONFIG_RTC_CLK_SRC ->External 32kHz crystal
 
-[sntp]
-Request interval to update time
-CONFIG_TIMEZONE "GMT-2"
-https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-EET-2EEST,M3.5.0/3,M10.5.0/4
 
-[button]
+# button
 todo boot btn to go provision mode?
 
 [termomenter]
@@ -102,12 +93,11 @@ https://docs.espressif.com/projects/esp-idf/en/v4.4.8/esp32/api-reference/periph
 
 https://esp32tutorials.com/esp32-esp-idf-max7219-dot-matrix-display
 
-https://xantorohara.github.io/led-matrix-editor/#7e1818181c181800|7e060c3060663c00|3c66603860663c00|30307e3234383000|3c6660603e067e00|3c66663e06663c00|1818183030667e00|3c66663c66663c00|3c66607c66663c00|3c66666e76663c00
 
 [json]
 https://github.com/nopnop2002/esp-idf-json
 
-[cmd list]
+# cmd list
 export TARGET_MAC=64E833885558
 export TARGET_MAC=64E833880880
 export TARGET_MAC=64E83387D7D0

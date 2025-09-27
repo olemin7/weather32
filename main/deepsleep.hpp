@@ -9,5 +9,9 @@
 namespace deepsleep {
 int get_boot_count();
 
-void deep_sleep(const std::chrono::microseconds duration);
+void deep_sleep(const std::chrono::milliseconds duration);
+
+void set_timeout(const std::chrono::milliseconds duration, const std::chrono::milliseconds sleep_duration);
+void extend_timeout(const std::chrono::milliseconds duration);
+void sleep();
 } // namespace deepsleep

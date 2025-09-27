@@ -50,10 +50,6 @@ dependencies:
   espressif/led_indicator:
     component_hash: f1fbe20fba9313986c32b1b6b7a4ae4822103ab928b51e9bd77215470cb70d98
     dependencies:
-    - name: espressif/led_strip
-      registry_url: https://components.espressif.com
-      require: public
-      version: 2.5.5
     - name: idf
       require: private
       version: '>=4.0'
@@ -61,6 +57,10 @@ dependencies:
       registry_url: https://components.espressif.com
       require: private
       version: 0.*
+    - name: espressif/led_strip
+      registry_url: https://components.espressif.com
+      require: public
+      version: 2.5.5
     source:
       registry_url: https://components.espressif.com/
       type: service
@@ -96,6 +96,6 @@ direct_dependencies:
 - espressif/led_indicator
 - espressif/network_provisioning
 - idf
-manifest_hash: 09b7bba3e5629d46efe4925e34fa41067ba3cd19d63751a5fabdb15f28ae49f4
+manifest_hash: 1de884c344c09b8b41849b3d22d0fb72066a3f9c238e32eedbfa9d9fc49453f4
 target: esp32c3
 version: 2.0.0

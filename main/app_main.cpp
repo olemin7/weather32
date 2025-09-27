@@ -23,34 +23,26 @@
 #include "json_helper.hpp"
 #include "provision.h"
 #include "mqtt/mqtt_wrapper.hpp"
-#include "display/blink.hpp"
-#include "time/sntp.hpp"
-#include "time/clock_tm.hpp"
+#include "blink.hpp"
 #include "iot_button.h"
 #include "sensors/sensor_event.hpp"
 #include "sensors/htu2x.hpp"
 #include "sensors/lighting.hpp"
-#include "display/screen.hpp"
-#include "display/layers.hpp"
-#include "display/tests.hpp"
-#include "display/font.hpp"
-#include "display/transformation.hpp"
 #include "utils/kvs.hpp"
 #include "utils/utils.hpp"
 #include "utils/puller.hpp"
 #include "proto/defines.hpp"
 #include "proto/handler.hpp"
 #include "proto/http_server.hpp"
+#include "deepsleep.hpp"
 
 using namespace std::chrono_literals;
 static const char *TAG = "main";
 
-constexpr auto DEVICE_SW = "CLOCK "__DATE__
+constexpr auto DEVICE_SW = "weather "__DATE__
                            " " __TIME__;
-layers::layers display;
 
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
-std::unique_ptr<clock_tm::clock> clock_ptr = nullptr;
 std::unique_ptr<utils::puller<int>> rssi_ptr = nullptr;
 button_handle_t btn_ptr = nullptr;
 
@@ -75,7 +67,6 @@ static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t
     device_info.ip = utils::to_Str(event->ip_info.ip);
 
     ESP_LOGI(TAG, "Connected with IP Address: %s", device_info.ip.c_str());
-    display.show(4, device_info.ip, screen::js_right);
 
     /* Signal main application to continue execution */
     xEventGroupSetBits(app_main_event_group, GOT_IP);
@@ -92,7 +83,7 @@ static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t
                                                         ESP_LOGI(TAG, "RSSI: %d", rssi); 
                                                         mqtt_send_sensor("rssi", rssi); });
 
-    sntp::start();
+
     blink::stop(blink::BLINK_CONNECTING);
 }
 
@@ -109,7 +100,6 @@ static void event_lost_ip_handler(void *arg, esp_event_base_t event_base, int32_
 static void button_event_cb(void *arg, void *data)
 {
     ESP_LOGW(TAG, "REQ REPROVISION");
-    display.show(10, "***");
     blink::start(blink::BLINK_FACTORY_RESET);
     ESP_ERROR_CHECK(provision_reset());
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -151,7 +141,6 @@ void init()
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &event_lost_ip_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &event_lost_ip_handler, NULL));
     blink::init();
-    screen::init();
 
     button_config_t btn_cfg = {
         .type = BUTTON_TYPE_GPIO,
@@ -166,41 +155,7 @@ void init()
     assert(btn_ptr);
     ESP_ERROR_CHECK(iot_button_register_cb(btn_ptr, BUTTON_LONG_PRESS_START, button_event_cb, NULL));
     lighting::init();
-    commands.add("ldr", [](auto payload)
-                 {
-                    proto::ldr_t data;
-                    ESP_LOGI(TAG, "esp_restart %s",payload.value_or("non").c_str());
-            if (payload && proto::get(payload.value(),data))
-            {
-                ESP_LOGI(TAG, "esp_restart");
-                lighting::set_adc_min(data.min);
-                lighting::set_adc_max(data.max);
-            }
-            data.max=lighting::get_adc_max();
-            data.min=lighting::get_adc_min();
-        return proto::to_str(data); }, "ldr {min,max}");
 
-    commands.add("brightness", [](auto payload)
-                 {
-
-        proto::brightness_t data;
-        if (payload && proto::get(payload.value(), data))
-        {
-            screen::set_config_brightness(data.points);
-        }
-        data.points=screen::get_config_brightness();
-        return proto::to_str(data); }, R"("points":[{"lighting":1530,"brightness":10}]")");
-
-    commands.add("display", [](auto payload)
-                 {
-        proto::display_t data;
-        if (payload && proto::get(payload.value(), data))
-        {
-            screen::set_config(data.segment_rotation, data.segment_upsidedown, data.mirrored);
-        }
-        screen::get_config(data.segment_rotation,data.segment_upsidedown,data.mirrored)  ;
-
-        return proto::to_str(data); }, "display {segment_rotation,segment_upsidedown,mirrored}");
 
     commands.add("restart", [](auto)
                  {
@@ -217,15 +172,6 @@ void init()
         esp_restart();
         return "factory_reset"; });
 
-    commands.add("timezone", [](auto payload)
-                 {
-        proto::timezone_t data;
-        if (payload && proto::get(payload.value(), data))
-        {
-            clock_tm::update_time_zone(data.tz);
-        }
-        data.tz = clock_tm::get_tz();
-        return proto::to_str(data); }, "{tz:...}");
 
     commands.add("mqtt", [](auto payload)
                  {
@@ -239,21 +185,6 @@ void init()
 
     ESP_LOGI(TAG, "%s", commands.get_cmd_list().c_str());
 
-    sntp::init([]()
-               {
-    if (!clock_ptr)
-    {
-    clock_ptr = std::make_unique<clock_tm::clock>([](auto timeinfo)
-                                                    { display.show(5, [&timeinfo]()
-                                                                    {
-            char buffMin[6];
-            const auto cnt=sprintf(buffMin, "%u:%02u", timeinfo.tm_hour, timeinfo.tm_min);
-            ESP_LOGI(TAG, "clock %s",buffMin); 
-            const auto image_0 = font::get(buffMin,0);
-            const u_int8_t space=(8 * CONFIG_DISPLAY_SEGMENTS-image_0.size())/(cnt-1);//space beatween symvols
-            const auto image = font::get(buffMin,std::min(space,(u_int8_t)3));
-            return transformation::image2buff(image, screen::js_center, 0); }); });
-    } });
     auto &server = http_server::server::get_instance();
     server.set_uri("/cmd", [](const std::string &payload)
                    {
@@ -276,6 +207,7 @@ extern "C" void app_main(void)
     blink::start(blink::BLINK_PROVISIONING);
     provision_main();
     ESP_LOGI(TAG, "started");
+    deepsleep::set_timeout(std::chrono::seconds(10), std::chrono::seconds(20));
     blink::stop(blink::BLINK_PROVISIONING);
     //------------------------------
 
