@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/oleksandrminenko/esp/v5.5.1/esp-idf/components/**"
+                "${config:idf.espIdfPath}/components/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

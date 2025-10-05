@@ -23,10 +23,10 @@ GND
 5V
 -------------------------------------
 GPIO_NUM_5  | A5  | MISO |
-GPIO_NUM_6  |     | MOSI |
-GPIO_NUM_7  |     | SS   | 
-GPIO_NUM_8  |     | SDA  | LED           |HTU2x SDA
-GPIO_NUM_9  |     | SDL  | BOOT_BUTTON   |HTU2x SDL
+GPIO_NUM_6  |     | MOSI | bme680 SDA
+GPIO_NUM_7  |     | SS   | bme680 SDL
+GPIO_NUM_8  |     | SDA  | LED           
+GPIO_NUM_9  |     | SDL  | BOOT_BUTTON   
 GPIO_NUM_10 |     |      |
 GPIO_NUM_20 |     | RX   |
 GPIO_NUM_21 |     | TX   |
@@ -78,10 +78,6 @@ https://github.com/nopnop2002/esp-idf-json/tree/master/json-basic-object
 # button
 todo boot btn to go provision mode?
 
-[termomenter]
-https://www.lucadentella.it/en/2017/10/13/esp32-24-i2c-un-esempio-pratico-con-sensore-htu21d/
-https://github.com/kimsniper/htu21d/tree/master/examples/esp32_implementation/main
-si7021 (htu2x)
 
 [esp-idf-lib]
 https://esp-idf-lib.readthedocs.io/en/latest/index.html

@@ -119,16 +119,6 @@ menu "App Configuration"
                 prompt "I2C_MASTER_SDA_IO"
     endmenu
 
-    menu "Clock"
-        config SNTP_TIME_SERVER
-            string "SNTP server name"
-            default "pool.ntp.org"
-            help
-                Hostname of the main SNTP server.
-        config TIMEZONE
-            string "TIMEZONE"
-            default "EET-2EEST,M3.5.0/3,M10.5.0/4"
-    endmenu
 
     menu "Sensors"
         config SENSORS_KA_PERIOD_S
@@ -150,29 +140,15 @@ menu "App Configuration"
         config LIGHTING_MAX_RAW
             int "LIGHTING_MAX_RAW"
             default 4096
+
+        rsource "sensors/bme680.projbuild"
     endmenu
 
-    menu "Display"
-        config DISPLAY_SEGMENTS
-            int "DISPLAY_SEGMENTS"
-            default 4
-
-        config DISPLAY_SEGMENT_ROTATION
-            int "DISPLAY_SEGMENT_ROTATION"
-            default 3
-            help
-                SEGMENT_ROTATION
-        config DISPLAY_SEGMENT_UPSIDEDOWN
-            int "DISPLAY_SEGMENT_UPSIDEDOWN"
-            default 0
-            help
-                SEGMENT_UPSIDEDOWN
-        config DISPLAY_MIRRORED
-            int "DISPLAY_MIRRORED"
-            default 0
-            help
-                DISPLAY_MIRRORED
-
+    menu "Deep Sleep"
+        config DEEP_SLEEP_ENABLED
+            bool
+            default y
+            prompt "Enable Deep Sleep"
     endmenu
 
 endmenu

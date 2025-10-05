@@ -5,9 +5,9 @@ idf_component_register(
         "provision.c"
         "blink.cpp" 
         "deepsleep.cpp"
-        "sensors/sensor_event.cpp"
+        "sensors/bme680.cpp"
         "sensors/lighting.cpp"
-        "sensors/htu2x.cpp"
+        "sensors/sensor_event.cpp"
         "proto/json_wrapper.cpp"
         "proto/handler.cpp"
         "proto/defines.cpp"
@@ -27,8 +27,7 @@ idf_component_register(
         mqtt 
         driver 
         spi_flash
-        si7021
-        max7219
         unity
         esp_http_server
+        bme680
     )

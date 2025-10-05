@@ -74,6 +74,9 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "task.h": "c",
+        "freertos.h": "c",
+        "led_strip_types.h": "c"
     }
 }

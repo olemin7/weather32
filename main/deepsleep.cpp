@@ -18,18 +18,23 @@ int get_boot_count() {
 
 void deep_sleep(const std::chrono::milliseconds duration)
 {
+
     ESP_LOGI(TAG, "boot count %d, sleep for %lldms", get_boot_count(),
-        std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
-    esp_deep_sleep(duration.count());
+        duration.count());
+#ifdef DEEP_SLEEP_ENABLED
+    esp_deep_sleep(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
+#else
+    ESP_LOGW(TAG, "Deep sleep disabled, not going to sleep");
+#endif
 }
 
 void set_timeout(const std::chrono::milliseconds duration, const std::chrono::milliseconds sleep_duration)
 {
-    ESP_LOGI(TAG, "set timeout for %ldms, sleep duartion %ldms", duration.count(), sleep_duration.count());
+    ESP_LOGI(TAG, "set timeout for %lldms, sleep duartion %lldms", duration.count(), sleep_duration.count());
 
     timeout_timer = std::make_unique<idf::esp_timer::ESPTimer>([sleep_duration]()
                                                                {
-        ESP_LOGI(TAG, "timeout reached, entering deep sleep for %ldms",sleep_duration.count());
+        ESP_LOGI(TAG, "timeout reached, entering deep sleep for %lldms",sleep_duration.count());
         deep_sleep(sleep_duration); });
 
     timeout_timer->start(duration);
@@ -38,7 +43,7 @@ void set_timeout(const std::chrono::milliseconds duration, const std::chrono::mi
 void extend_timeout(const std::chrono::milliseconds duration){
     if (timeout_timer) {
         timeout_timer->start(duration);
-        ESP_LOGI(TAG, "timeout extended to %ldms", duration.count());
+        ESP_LOGI(TAG, "timeout extended to %lldms", duration.count());
     }
 }
 

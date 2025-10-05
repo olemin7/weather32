@@ -26,7 +26,7 @@
 #include "blink.hpp"
 #include "iot_button.h"
 #include "sensors/sensor_event.hpp"
-#include "sensors/htu2x.hpp"
+#include "sensors/bme680.hpp"
 #include "sensors/lighting.hpp"
 #include "utils/kvs.hpp"
 #include "utils/utils.hpp"
@@ -44,6 +44,7 @@ constexpr auto DEVICE_SW = "weather "__DATE__
 
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
 std::unique_ptr<utils::puller<int>> rssi_ptr = nullptr;
+std::unique_ptr<bme680::bme680> bme680_p = nullptr;
 button_handle_t btn_ptr = nullptr;
 
 proto::handler commands;
@@ -132,6 +133,19 @@ void init()
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     app_main_event_group = xEventGroupCreate();
     kvs::init();
+    bme680::init();
+    bme680_p = std::make_unique<bme680::bme680>([](float temperature, float pressure, float humidity, float gas_resistance
+
+                                                )
+                                                {
+        ESP_LOGI(TAG, "bme680 %f %f %f %f", temperature, pressure, humidity, gas_resistance);
+        mqtt_send_sensor("temperature", temperature);
+        mqtt_send_sensor("humidity", humidity);
+        mqtt_send_sensor("pressure", pressure);
+        mqtt_send_sensor("gas_resistance", gas_resistance); },
+                                                [](auto) {
+
+                                                });
 
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
@@ -156,7 +170,6 @@ void init()
     ESP_ERROR_CHECK(iot_button_register_cb(btn_ptr, BUTTON_LONG_PRESS_START, button_event_cb, NULL));
     lighting::init();
 
-
     commands.add("restart", [](auto)
                  {
         ESP_LOGI(TAG, "esp_restart");
@@ -171,7 +184,6 @@ void init()
         vTaskDelay(pdMS_TO_TICKS(500));
         esp_restart();
         return "factory_reset"; });
-
 
     commands.add("mqtt", [](auto payload)
                  {
@@ -214,7 +226,7 @@ extern "C" void app_main(void)
     blink::start(blink::BLINK_CONNECTING);
     xEventGroupWaitBits(app_main_event_group, GOT_IP, pdTRUE, pdTRUE, portMAX_DELAY);
 
-    htu2x::init();
+   // htu2x::init();
     //--------------------------------
     ESP_ERROR_CHECK(esp_event_handler_register(sensor_event::event, sensor_event::internall_temperature, &mqtt_temperature, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(sensor_event::event, sensor_event::internall_humidity, &mqtt_humidity, NULL));
