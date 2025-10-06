@@ -13,6 +13,7 @@
 #include <vector>
 #include "esp_mqtt.hpp"
 #include "esp_mqtt_client_config.hpp"
+#include <memory>
 
 namespace mqtt
 {
@@ -32,10 +33,11 @@ namespace mqtt
    {
    private:
       const device_info_t device_info_;
-      command_cb_t device_cmd_cb_;
+      std::unique_ptr<command_cb_t> device_cmd_cb_;
       idf::mqtt::Filter device_cmd_;
       idf::mqtt::Filter brodcast_cmd_;
    public:
+      CMQTTWrapper(device_info_t &device_info);
       CMQTTWrapper(device_info_t &device_info, command_cb_t &&device_cmd_cb);
       virtual ~CMQTTWrapper() = default;
       void publish(const std::string &topic, const std::string &message);

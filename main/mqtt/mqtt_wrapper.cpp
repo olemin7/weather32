@@ -52,15 +52,20 @@ namespace mqtt
         return url;
     }
 
-    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info, command_cb_t &&device_cmd_cb)
+    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info)
         : imqtt::Client(imqtt::BrokerConfiguration{.address = {imqtt::URI{get_config_url()}},
                                                    .security = imqtt::Insecure{}},
                         {}, {.connection = {.disable_auto_reconnect = true}}),
-          device_info_(device_info), device_cmd_cb_(device_cmd_cb),
+          device_info_(device_info),
           device_cmd_("cmd/" + device_info_.mac), brodcast_cmd_("cmd")
     {
         ESP_LOGI(TAG, "CONFIG_BROKER_URL %s", CONFIG_BROKER_URL);
-        //    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    };
+
+    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info, command_cb_t &&device_cmd_cb)
+        : CMQTTWrapper(device_info)
+    {
+        device_cmd_cb_ = std::make_unique<command_cb_t>(device_cmd_cb);
     };
 
     void CMQTTWrapper::on_connected(esp_mqtt_event_handle_t const /*event*/)
@@ -87,12 +92,15 @@ namespace mqtt
     {
         const std::string msg(event->data, event->data_len);
         ESP_LOGD(TAG, "Rec:%s", msg.c_str());
-        if (device_cmd_.match(event->topic, event->topic_len))
+        if (device_cmd_cb_)
         {
-            auto response = device_cmd_cb_(msg);
-            if (response.length())
+            if (device_cmd_.match(event->topic, event->topic_len))
             {
-                publish("response/" + device_info_.mac, R"({"payload":)" + response + "}");
+                auto response = (*device_cmd_cb_)(msg);
+                if (response.length())
+                {
+                    publish("response/" + device_info_.mac, R"({"payload":)" + response + "}");
+                }
             }
         }
         if (brodcast_cmd_.match(event->topic, event->topic_len))
