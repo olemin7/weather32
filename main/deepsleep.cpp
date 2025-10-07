@@ -21,7 +21,7 @@ void deep_sleep(const std::chrono::milliseconds duration)
 
     ESP_LOGI(TAG, "boot count %d, sleep for %lldms", get_boot_count(),
         duration.count());
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef CONFIG_DEEP_SLEEP_ENABLED
     esp_deep_sleep(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
 #else
     ESP_LOGW(TAG, "Deep sleep disabled, not going to sleep");

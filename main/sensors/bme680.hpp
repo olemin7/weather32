@@ -1,4 +1,5 @@
 #pragma once
+#include "sensor_cb.hpp"
 #include "esp_timer_cxx.hpp"
 #include <functional>
 #include <memory>
@@ -9,22 +10,16 @@ BME680_I2C_ADDRESS_x77
 */
 namespace bme680
 {
-    typedef std::function<void(std::string error)> on_error_t;
-    typedef std::function<void(float temperature, float pressure, float humidity, float gas_resistance)> on_success_t;
-
-    class bme680
+    using sensor_value_t = bme680_values_float_t;
+    class sensor
     {
-    
     private:
-        std::unique_ptr<idf::esp_timer::ESPTimer> timer_p;
-        bme680_t sensor;
+        std::unique_ptr<sensor_cb::timed_cb<sensor_value_t>> handler_;
+        bme680_t dev_;
+        bool get_value(sensor_value_t &value);
 
     public:
-        bme680(on_success_t &&,on_error_t &&);
-        ~bme680();
+        sensor(sensor_cb::on_success_cb_t<sensor_value_t> &&on_success, sensor_cb::on_error_cb_t &&on_error);
+        ~sensor();
     };
-    
-
-    
-    void init();
 }

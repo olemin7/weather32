@@ -35,15 +35,13 @@ namespace bh1750
 
     bool sensor::get_value(uint16_t &value)
     {
-        uint16_t lux;
-        if (bh1750_read(&dev_, &lux) != ESP_OK)
+        if (bh1750_read(&dev_, &value) != ESP_OK)
         {
             ESP_LOGE(TAG, "Could not read lux data");
             return false;
         }
         else
         {
-            value = lux;
             return true;
         }
     }

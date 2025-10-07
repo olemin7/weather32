@@ -548,7 +548,7 @@ CONFIG_BH1750_I2C_ADDRESS_LO=y
 #
 # Deep Sleep
 #
-# CONFIG_DEEP_SLEEP_ENABLED is not set
+CONFIG_DEEP_SLEEP_ENABLED=y
 # end of Deep Sleep
 # end of App Configuration
 

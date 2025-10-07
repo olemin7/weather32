@@ -39,7 +39,7 @@ constexpr auto DEVICE_SW = "weather32 "__DATE__
                            " " __TIME__;
 
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
-std::unique_ptr<bme680::bme680> bme680_p = nullptr;
+std::unique_ptr<bme680::sensor> bme680_p = nullptr;
 std::unique_ptr<bh1750::sensor> bh1750_p = nullptr;
 std::map<std::string, std::string> sensors_data;
 
@@ -100,14 +100,15 @@ void init()
     app_main_event_group = xEventGroupCreate();
     kvs::init();
     ESP_ERROR_CHECK(i2cdev_init());
-    bme680_p = std::make_unique<bme680::bme680>([](float temperature, float pressure, float humidity, float gas_resistance)
+    bme680_p = std::make_unique<bme680::sensor>([](auto value)
                                                 {
-                                                    collect_sensors_data("temperature", temperature);
-                                                    collect_sensors_data("humidity", humidity);
-                                                    collect_sensors_data("pressure", pressure);
+                                                    
+                                                    collect_sensors_data("temperature", value.temperature);
+                                                    collect_sensors_data("humidity", value.humidity);
+                                                    collect_sensors_data("pressure", value.pressure);
                                                     xEventGroupSetBits(app_main_event_group, GOT_SENSOR_DATA); },
 
-                                                [](auto)
+                                                []()
                                                 { xEventGroupSetBits(app_main_event_group, GOT_SENSOR_DATA); });
     bh1750_p = std::make_unique<bh1750::sensor>([](auto lux)
                                                 {
@@ -151,7 +152,7 @@ extern "C" void app_main(void)
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);
-    xEventGroupWaitBits(app_main_event_group, GOT_IP | GOT_SENSOR_DATA /* | GOT_LIGHTING_DATA | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(app_main_event_group, GOT_IP | GOT_SENSOR_DATA | GOT_LIGHTING_DATA /* | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
 
     if (mqtt_mng)
     {
