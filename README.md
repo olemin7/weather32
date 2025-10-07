@@ -61,6 +61,7 @@ sudo /etc/init.d/mosquitto restart
 
 mosquitto_sub -h nas.local -d -t advertisement
 mosquitto_pub -h nas.local -d -t cmd -m "adv"
+mosquitto_sub -h 192.168.1.2 -d -t devices/64E833880880/#
 
 one terminal
 mosquitto_sub -d -t hello/world

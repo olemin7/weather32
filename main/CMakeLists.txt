@@ -2,16 +2,11 @@ idf_component_register(
     SRCS
         "app_main.cpp" 
         "mqtt/mqtt_wrapper.cpp" 
-        "provision.c"
+        "provision.cpp"
         "blink.cpp" 
         "deepsleep.cpp"
         "sensors/bme680.cpp"
-        "sensors/lighting.cpp"
-        "sensors/sensor_event.cpp"
-        "proto/json_wrapper.cpp"
-        "proto/handler.cpp"
-        "proto/defines.cpp"
-        "proto/http_server.cpp"
+        "sensors/bh1750.cpp"
         "utils/utils.cpp" 
         "utils/kvs.cpp"
         #-----------------
@@ -30,4 +25,5 @@ idf_component_register(
         unity
         esp_http_server
         bme680
+        bh1750
     )

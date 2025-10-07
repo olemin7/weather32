@@ -7,6 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
+#include "provision.hpp"
 #include <stdio.h>
 #include <string.h>
 
@@ -21,6 +22,7 @@
 
 #include <wifi_provisioning/manager.h>
 #include <wifi_provisioning/scheme_ble.h>
+#include "blink.hpp"
 
 static const char* TAG = "provisioning";
 
@@ -67,36 +69,25 @@ esp_err_t provision_reset(void)
     return wifi_prov_mgr_reset_provisioning();
 }
 
-static esp_err_t example_get_sec2_salt(const char** salt, uint16_t* salt_len) {
-#if CONFIG_EXAMPLE_PROV_SEC2_DEV_MODE
+static esp_err_t example_get_sec2_salt(const char **salt, uint16_t *salt_len)
+{
     ESP_LOGI(TAG, "Development mode: using hard coded salt");
     *salt     = sec2_salt;
     *salt_len = sizeof(sec2_salt);
     return ESP_OK;
-#elif CONFIG_EXAMPLE_PROV_SEC2_PROD_MODE
-    ESP_LOGE(TAG, "Not implemented!");
-    return ESP_FAIL;
-#endif
 }
 
-static esp_err_t example_get_sec2_verifier(const char** verifier, uint16_t* verifier_len) {
-#if CONFIG_EXAMPLE_PROV_SEC2_DEV_MODE
+static esp_err_t example_get_sec2_verifier(const char **verifier, uint16_t *verifier_len)
+{
     ESP_LOGI(TAG, "Development mode: using hard coded verifier");
     *verifier     = sec2_verifier;
     *verifier_len = sizeof(sec2_verifier);
     return ESP_OK;
-#elif CONFIG_EXAMPLE_PROV_SEC2_PROD_MODE
-    /* This code needs to be updated with appropriate implementation to provide verifier */
-    ESP_LOGE(TAG, "Not implemented!");
-    return ESP_FAIL;
-#endif
 }
 #endif
 
-#define PROV_QR_VERSION "v1"
 #define PROV_TRANSPORT_SOFTAP "softap"
 #define PROV_TRANSPORT_BLE "ble"
-#define QRCODE_BASE_URL "https://espressif.github.io/esp-jumpstart/qrcode.html"
 
 /* Event handler for catching system events */
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
@@ -272,6 +263,8 @@ void provision_main(void) {
 #endif
     /* If device is not yet provisioned start provisioning service */
     if (!provisioned) {
+        blink::init();
+        blink::start(blink::BLINK_PROVISIONING);
         ESP_LOGI(TAG, "Starting provisioning");
 
         /* What is the Device Service Name that we want
@@ -310,19 +303,6 @@ void provision_main(void) {
         wifi_prov_security_t security = WIFI_PROV_SECURITY_2;
         /* The username must be the same one, which has been used in the generation of salt and verifier */
 
-#if CONFIG_EXAMPLE_PROV_SEC2_DEV_MODE
-        /* This pop field represents the password that will be used to generate salt and verifier.
-         * The field is present here in order to generate the QR code containing password.
-         * In production this password field shall not be stored on the device */
-        const char* username = EXAMPLE_PROV_SEC2_USERNAME;
-        const char* pop      = EXAMPLE_PROV_SEC2_PWD;
-#elif CONFIG_EXAMPLE_PROV_SEC2_PROD_MODE
-        /* The username and password shall not be embedded in the firmware,
-         * they should be provided to the user by other means.
-         * e.g. QR code sticker */
-        const char* username = NULL;
-        const char* pop      = NULL;
-#endif
         /* This is the structure for passing security parameters
          * for the protocomm security 2.
          * If dynamically allocated, sec2_params pointer and its content
@@ -394,9 +374,9 @@ void provision_main(void) {
          * This call must be made after starting the provisioning, and only if the endpoint
          * has already been created above.
          */
-        ESP_LOGI(TAG, "Starting !!!!!!!");
         wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
         xEventGroupWaitBits(provision_event_group, PROVISION_END_EVENT, pdTRUE, pdTRUE, portMAX_DELAY);
+        blink::stop(blink::BLINK_PROVISIONING);
     } else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
 

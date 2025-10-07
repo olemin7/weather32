@@ -1,0 +1,17 @@
+menu "BH1750"
+    choice BH1750_I2C_ADDRESS
+        prompt "Select I2C address"
+        default EXAMPLE_I2C_ADDRESS_LO
+        help
+            Select I2C address
+
+        config BH1750_I2C_ADDRESS_LO
+            bool "BH1750_ADDR_LO"
+            help
+                Choose this when ADDR pin is floating or low.
+        config BH1750_I2C_ADDRESS_HI
+            bool "BH1750_ADDR_HI"
+            help
+                Choose this when ADDR pin is high.
+    endchoice
+endmenu

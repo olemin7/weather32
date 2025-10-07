@@ -85,7 +85,39 @@ namespace mqtt
     {
         ESP_LOGI(TAG, "add topic:%s, msg:%s", topic.c_str(), message.c_str());
 
-        imqtt::Client::publish(topic, imqtt::StringMessage(message));
+        const auto msg = imqtt::Client::publish(topic, imqtt::StringMessage(message));
+        if (msg)
+        {
+            send_mgs_list_.insert(msg.value());
+        }
+    }
+
+    bool CMQTTWrapper::is_all_send() const
+    {
+        return send_mgs_list_.empty();
+    }
+
+    void CMQTTWrapper::is_all_send_cb(all_send_cb_t &&cb)
+    {
+        if (is_all_send())
+        {
+            cb();
+        }
+        all_send_cb_ = std::make_unique<all_send_cb_t>(std::move(cb));
+    }
+
+    void CMQTTWrapper::on_published(const esp_mqtt_event_handle_t event)
+    {
+        send_mgs_list_.erase(static_cast<idf::mqtt::MessageID>(event->msg_id));
+        if (is_all_send())
+        {
+            ESP_LOGI(TAG, "all send");
+            if (all_send_cb_)
+            {
+                (*all_send_cb_)();
+                all_send_cb_.reset();
+            }
+        }
     }
 
     void CMQTTWrapper::on_data(const esp_mqtt_event_handle_t event)

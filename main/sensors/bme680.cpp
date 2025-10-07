@@ -3,9 +3,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_system.h>
-#include <string.h>
 #include "sdkconfig.h"
-#include "sensor_event.hpp"
 #include "bme680.hpp"
 #include "esp_log.h"
 
@@ -75,10 +73,13 @@ namespace bme680
                 if (bme680_get_results_float(&sensor, &values) == ESP_OK){
                     ESP_LOGI(TAG,"BME680 Sensor: %.2f °C, %.2f %%, %.2f hPa, %.2f Ohm\n",
                              values.temperature, values.humidity, values.pressure, values.gas_resistance);
-                    }else{
-                        ESP_LOGE(TAG, "failed to get results");
-                        on_error("failed to get results");
-                    } });
+                    on_success(values.temperature, values.humidity, values.pressure, values.gas_resistance);
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "failed to get results");
+                    on_error("failed to get results");
+                } });
             timer_p->start(duration_ms);
         }else{
             ESP_LOGE(TAG, "failed to trigger measurement");

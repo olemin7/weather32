@@ -5,6 +5,7 @@
 #include <iostream>
 #include <math.h>
 #include <string>
+#include <map>
 
 #include "rom/rtc.h"
 #include "sdkconfig.h"
@@ -21,44 +22,38 @@
 #include <esp_event.h>
 
 #include "json_helper.hpp"
-#include "provision.h"
+#include "provision.hpp"
 #include "mqtt/mqtt_wrapper.hpp"
 #include "blink.hpp"
 #include "iot_button.h"
-#include "sensors/sensor_event.hpp"
 #include "sensors/bme680.hpp"
-#include "sensors/lighting.hpp"
+#include "sensors/bh1750.hpp"
 #include "utils/kvs.hpp"
 #include "utils/utils.hpp"
-#include "utils/puller.hpp"
-#include "proto/defines.hpp"
-#include "proto/handler.hpp"
-#include "proto/http_server.hpp"
 #include "deepsleep.hpp"
 
 using namespace std::chrono_literals;
 static const char *TAG = "main";
 
-constexpr auto DEVICE_SW = "weather "__DATE__
+constexpr auto DEVICE_SW = "weather32 "__DATE__
                            " " __TIME__;
 
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
-std::unique_ptr<utils::puller<int>> rssi_ptr = nullptr;
 std::unique_ptr<bme680::bme680> bme680_p = nullptr;
-button_handle_t btn_ptr = nullptr;
-
-proto::handler commands;
+std::unique_ptr<bh1750::sensor> bh1750_p = nullptr;
+std::map<std::string, std::string> sensors_data;
 
 static EventGroupHandle_t app_main_event_group;
 constexpr int GOT_IP = BIT0;
+constexpr int GOT_SENSOR_DATA = BIT1;
+constexpr int GOT_LIGHTING_DATA = BIT2;
+constexpr int GOT_BAT = BIT3;
+constexpr int MQTT_EMPTY = BIT4;
 
 template <typename T>
-void mqtt_send_sensor(const std::string &field, T value)
+void collect_sensors_data(const std::string &field, T value)
 {
-    if (mqtt_mng)
-    {
-        mqtt_mng->publish_device_brunch(field, value);
-    }
+    sensors_data[field] = std::to_string(value);
 }
 
 static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -75,55 +70,26 @@ static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t
     device_info.sw = DEVICE_SW;
     device_info.mac = utils::get_mac();
 
-    mqtt_mng = std::make_unique<mqtt::CMQTTWrapper>(device_info, [](auto msg)
-                                                    { return commands.on_command(msg); });
-    rssi_ptr = std::make_unique<utils::puller<int>>([](int &rssi)
-                                                    { return ESP_OK == esp_wifi_sta_get_rssi(&rssi); },
-                                                    60s * 5, [](int rssi)
-                                                    {
-                                                        ESP_LOGI(TAG, "RSSI: %d", rssi); 
-                                                        mqtt_send_sensor("rssi", rssi); });
-
-
+    mqtt_mng = std::make_unique<mqtt::CMQTTWrapper>(device_info);
+    int rssi = -1;
+    if (ESP_OK == esp_wifi_sta_get_rssi(&rssi))
+    {
+        ESP_LOGI(TAG, "RSSI: %d", rssi);
+        collect_sensors_data("rssi", rssi);
+    }
     blink::stop(blink::BLINK_CONNECTING);
 }
 
-static void event_lost_ip_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    blink::start(blink::BLINK_CONNECTING);
-    ESP_LOGI(TAG, "event_lost_ip_handler");
-    rssi_ptr.reset();
-    mqtt_mng.reset();
-}
-
-#define BOOT_BUTTON_NUM 9
+constexpr auto BOOT_BUTTON_NUM = GPIO_NUM_9;
 #define BUTTON_ACTIVE_LEVEL 0
 static void button_event_cb(void *arg, void *data)
 {
+    blink::init();
     ESP_LOGW(TAG, "REQ REPROVISION");
     blink::start(blink::BLINK_FACTORY_RESET);
     ESP_ERROR_CHECK(provision_reset());
     vTaskDelay(pdMS_TO_TICKS(1000));
     esp_restart();
-}
-
-void mqtt_temperature(void * /*arg*/, esp_event_base_t /*event_base*/, int32_t /*event_id*/, void *event_data)
-{
-    const auto event = (sensor_event::temperature_t *)event_data;
-    mqtt_send_sensor("temperature", event->val);
-}
-
-void mqtt_humidity(void * /*arg*/, esp_event_base_t /*event_base*/, int32_t /*event_id*/, void *event_data)
-{
-    const auto event = (sensor_event::humidity_t *)event_data;
-    mqtt_send_sensor("humidity", event->val);
-}
-
-void mqtt_lighting(void * /*arg*/, esp_event_base_t /*event_base*/, int32_t /*event_id*/, void *event_data)
-{
-    const auto event = (sensor_event::lighting_t *)event_data;
-    mqtt_send_sensor("lighting", event->val);
-    mqtt_send_sensor("adc", event->raw);
 }
 
 void init()
@@ -133,29 +99,27 @@ void init()
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     app_main_event_group = xEventGroupCreate();
     kvs::init();
-    bme680::init();
-    bme680_p = std::make_unique<bme680::bme680>([](float temperature, float pressure, float humidity, float gas_resistance
-
-                                                )
+    ESP_ERROR_CHECK(i2cdev_init());
+    bme680_p = std::make_unique<bme680::bme680>([](float temperature, float pressure, float humidity, float gas_resistance)
                                                 {
-        ESP_LOGI(TAG, "bme680 %f %f %f %f", temperature, pressure, humidity, gas_resistance);
-        mqtt_send_sensor("temperature", temperature);
-        mqtt_send_sensor("humidity", humidity);
-        mqtt_send_sensor("pressure", pressure);
-        mqtt_send_sensor("gas_resistance", gas_resistance); },
-                                                [](auto) {
+                                                    collect_sensors_data("temperature", temperature);
+                                                    collect_sensors_data("humidity", humidity);
+                                                    collect_sensors_data("pressure", pressure);
+                                                    xEventGroupSetBits(app_main_event_group, GOT_SENSOR_DATA); },
 
-                                                });
-
+                                                [](auto)
+                                                { xEventGroupSetBits(app_main_event_group, GOT_SENSOR_DATA); });
+    bh1750_p = std::make_unique<bh1750::sensor>([](auto lux)
+                                                {
+                                                    collect_sensors_data("lux", lux);
+                                                    xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); },
+                                                []()
+                                                { xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); });
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
 
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_got_ip_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &event_lost_ip_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &event_lost_ip_handler, NULL));
-    blink::init();
-
     button_config_t btn_cfg = {
         .type = BUTTON_TYPE_GPIO,
         .long_press_time = 5 * 1000,
@@ -168,40 +132,6 @@ void init()
     button_handle_t btn_ptr = iot_button_create(&btn_cfg);
     assert(btn_ptr);
     ESP_ERROR_CHECK(iot_button_register_cb(btn_ptr, BUTTON_LONG_PRESS_START, button_event_cb, NULL));
-    lighting::init();
-
-    commands.add("restart", [](auto)
-                 {
-        ESP_LOGI(TAG, "esp_restart");
-        vTaskDelay(pdMS_TO_TICKS(500));
-        esp_restart();
-        return "restart"; });
-
-    commands.add("factory_reset", [](auto)
-                 {
-        ESP_LOGI(TAG, "factory_reset");
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        vTaskDelay(pdMS_TO_TICKS(500));
-        esp_restart();
-        return "factory_reset"; });
-
-    commands.add("mqtt", [](auto payload)
-                 {
-        proto::mqtt_t data;
-        if (payload && proto::get(payload.value(), data))
-        {
-            mqtt::set_config(data.url);    
-        }
-        mqtt::get_config(data.url);
-        return proto::to_str(data); }, "{url:...}");
-
-    ESP_LOGI(TAG, "%s", commands.get_cmd_list().c_str());
-
-    auto &server = http_server::server::get_instance();
-    server.set_uri("/cmd", [](const std::string &payload)
-                   {
-            ESP_LOGI(TAG, "http_server::server::get_instance() %s", payload.c_str());
-        return commands.on_command(payload); });
 }
 
 /************************************
@@ -211,27 +141,31 @@ void init()
 #ifndef UNIT_TEST
 extern "C" void app_main(void)
 {
-    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "Startup");
     init();
-    //  screen::tests();
-
     //------------------------------
-    blink::start(blink::BLINK_PROVISIONING);
+
     provision_main();
-    ESP_LOGI(TAG, "started");
+    ESP_LOGI(TAG, "Started");
     deepsleep::set_timeout(std::chrono::seconds(10), std::chrono::seconds(20));
-    blink::stop(blink::BLINK_PROVISIONING);
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);
-    xEventGroupWaitBits(app_main_event_group, GOT_IP, pdTRUE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(app_main_event_group, GOT_IP | GOT_SENSOR_DATA /* | GOT_LIGHTING_DATA | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
 
-   // htu2x::init();
-    //--------------------------------
-    ESP_ERROR_CHECK(esp_event_handler_register(sensor_event::event, sensor_event::internall_temperature, &mqtt_temperature, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(sensor_event::event, sensor_event::internall_humidity, &mqtt_humidity, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(sensor_event::event, sensor_event::lighting, &mqtt_lighting, NULL));
+    if (mqtt_mng)
+    {
+        ESP_LOGI(TAG, "send sensors data");
+        for (const auto &pair : sensors_data)
+        {
+            mqtt_mng->publish_device_brunch(pair.first, pair.second);
+        }
+    }
 
+    mqtt_mng->is_all_send_cb([]()
+                             { xEventGroupSetBits(app_main_event_group, MQTT_EMPTY); });
+    xEventGroupWaitBits(app_main_event_group, MQTT_EMPTY, pdTRUE, pdTRUE, portMAX_DELAY);
+    // force powerdown
     ESP_LOGI(TAG, "done");
 }
 

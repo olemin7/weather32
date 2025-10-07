@@ -12,8 +12,9 @@ FetchContent_MakeAvailable(espidflib)
 
 set(EXTRA_COMPONENT_DIRS 
     ${EXTRA_COMPONENT_DIRS}
-    ${espidflib_SOURCE_DIR}/components/bme680
     ${espidflib_SOURCE_DIR}/components/i2cdev
+    ${espidflib_SOURCE_DIR}/components/bme680
+    ${espidflib_SOURCE_DIR}/components/bh1750
     ${espidflib_SOURCE_DIR}/components/esp_idf_lib_helpers
     )
 

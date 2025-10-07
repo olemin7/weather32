@@ -1,0 +1,18 @@
+menu "MQTT Configuration"
+    config BROKER_URL
+        string "MQTT Broker URL"
+        default "mqtt://nas.local"
+        help
+            URL of the broker to connect to
+                
+    config MQTT_TOPIC_ADVERTISEMENT
+        string "MQTT_TOPIC_ADVERTISEMENT"
+        default "advertisement"
+
+    config MQTT_TOPIC_BROADCAST
+        string "message related to all devices"
+        default "brodcast"
+                
+endmenu
+
+
