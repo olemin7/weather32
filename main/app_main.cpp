@@ -41,7 +41,8 @@ constexpr auto DEVICE_SW = "weather32 "__DATE__
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
 std::unique_ptr<bme680::sensor> bme680_p = nullptr;
 std::unique_ptr<bh1750::sensor> bh1750_p = nullptr;
-std::map<std::string, std::string> sensors_data;
+std::unique_ptr<idf::esp_timer::ESPTimer> sleep_timer = nullptr;
+std::map<std::string, std::string> sensors_data = {};
 
 static EventGroupHandle_t app_main_event_group;
 constexpr int GOT_IP = BIT0;
@@ -92,6 +93,15 @@ static void button_event_cb(void *arg, void *data)
     esp_restart();
 }
 
+void shootdown()
+{
+    ESP_LOGW(TAG, "SHUTDOWN");
+    bme680_p.reset();
+    bh1750_p.reset();
+    ESP_LOGI(TAG, "entering deep sleep ");
+    deepsleep::sleep(10s);
+}
+
 void init()
 {
     utils::print_info();
@@ -116,6 +126,9 @@ void init()
                                                     xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); },
                                                 []()
                                                 { xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); });
+
+    sleep_timer = std::make_unique<idf::esp_timer::ESPTimer>([]()
+                                                             { shootdown(); });
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -148,7 +161,7 @@ extern "C" void app_main(void)
 
     provision_main();
     ESP_LOGI(TAG, "Started");
-    deepsleep::set_timeout(std::chrono::seconds(10), std::chrono::seconds(20));
+    sleep_timer->start(7s);
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);
@@ -166,8 +179,9 @@ extern "C" void app_main(void)
     mqtt_mng->is_all_send_cb([]()
                              { xEventGroupSetBits(app_main_event_group, MQTT_EMPTY); });
     xEventGroupWaitBits(app_main_event_group, MQTT_EMPTY, pdTRUE, pdTRUE, portMAX_DELAY);
-    // force powerdown
     ESP_LOGI(TAG, "done");
+    sleep_timer->stop();
+    sleep_timer->start(0s);
 }
 
 #else

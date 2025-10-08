@@ -45,4 +45,9 @@ namespace bh1750
             return true;
         }
     }
+    sensor::~sensor()
+    {
+        bh1750_power_down(&dev_);
+        bh1750_free_desc(&dev_);
+    }
 }

@@ -72,6 +72,7 @@ namespace bme680
 
     sensor::~sensor()
     {
+        bme680_use_heater_profile(&dev_, BME680_HEATER_NOT_USED);
         bme680_free_desc(&dev_);
     }
 }

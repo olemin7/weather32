@@ -13,5 +13,6 @@ namespace bh1750 {
 
         public:
             sensor(sensor_cb::on_success_cb_t<sensor_value_t> &&on_success, sensor_cb::on_error_cb_t &&on_error);
+            ~sensor();
     };
 }
