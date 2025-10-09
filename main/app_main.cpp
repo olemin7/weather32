@@ -93,11 +93,17 @@ static void button_event_cb(void *arg, void *data)
     esp_restart();
 }
 
-void shootdown()
+void sensors_off()
 {
-    ESP_LOGW(TAG, "SHUTDOWN");
+    ESP_LOGI(TAG, "sensors_off");
     bme680_p.reset();
     bh1750_p.reset();
+}
+
+void shootdown()
+{
+    ESP_LOGI(TAG, "SHUTDOWN");
+    sensors_off();
     ESP_LOGI(TAG, "entering deep sleep ");
     deepsleep::sleep(10s);
 }
@@ -112,7 +118,7 @@ void init()
     ESP_ERROR_CHECK(i2cdev_init());
     bme680_p = std::make_unique<bme680::sensor>([](auto value)
                                                 {
-                                                    
+
                                                     collect_sensors_data("temperature", value.temperature);
                                                     collect_sensors_data("humidity", value.humidity);
                                                     collect_sensors_data("pressure", value.pressure);
@@ -165,7 +171,9 @@ extern "C" void app_main(void)
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);
-    xEventGroupWaitBits(app_main_event_group, GOT_IP | GOT_SENSOR_DATA | GOT_LIGHTING_DATA /* | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(app_main_event_group, GOT_SENSOR_DATA | GOT_LIGHTING_DATA /* | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
+    sensors_off();
+    xEventGroupWaitBits(app_main_event_group, GOT_IP, pdTRUE, pdTRUE, portMAX_DELAY);
 
     if (mqtt_mng)
     {

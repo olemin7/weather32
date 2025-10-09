@@ -77,6 +77,12 @@
         "variant": "cpp",
         "task.h": "c",
         "freertos.h": "c",
-        "led_strip_types.h": "c"
+        "led_strip_types.h": "c",
+        "strstream": "cpp",
+        "cfenv": "cpp",
+        "source_location": "cpp",
+        "stdfloat": "cpp",
+        "typeindex": "cpp",
+        "valarray": "cpp"
     }
 }
