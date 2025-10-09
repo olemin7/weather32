@@ -7,6 +7,7 @@ idf_component_register(
         "deepsleep.cpp"
         "sensors/bme680.cpp"
         "sensors/bh1750.cpp"
+        "sensors/adc.cpp"
         "utils/utils.cpp" 
         "utils/kvs.cpp"
         #-----------------

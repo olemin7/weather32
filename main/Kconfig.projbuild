@@ -113,6 +113,7 @@ menu "App Configuration"
         #     int "LIGHTING_MAX_RAW"
         #     default 4096
 
+        rsource "sensors/adc.projbuild"
         rsource "sensors/bme680.projbuild"
         rsource "sensors/bh1750.projbuild"
         

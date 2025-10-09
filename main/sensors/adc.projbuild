@@ -1,0 +1,10 @@
+menu "adc"
+    config ADC_READ_COUNT
+        int
+        default 5
+        prompt "ADC_READ_COUNT"
+    config ADC_READ_TIMEOUT
+        int
+        default 100
+        prompt "ADC_READ_TIMEOUT"
+endmenu

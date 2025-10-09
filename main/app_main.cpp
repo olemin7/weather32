@@ -28,6 +28,7 @@
 #include "iot_button.h"
 #include "sensors/bme680.hpp"
 #include "sensors/bh1750.hpp"
+#include "sensors/adc.hpp"
 #include "utils/kvs.hpp"
 #include "utils/utils.hpp"
 #include "deepsleep.hpp"
@@ -41,6 +42,7 @@ constexpr auto DEVICE_SW = "weather32 "__DATE__
 std::unique_ptr<mqtt::CMQTTWrapper> mqtt_mng = nullptr;
 std::unique_ptr<bme680::sensor> bme680_p = nullptr;
 std::unique_ptr<bh1750::sensor> bh1750_p = nullptr;
+std::unique_ptr<adc::sensor> adc_p = nullptr;
 std::unique_ptr<idf::esp_timer::ESPTimer> sleep_timer = nullptr;
 std::map<std::string, std::string> sensors_data = {};
 
@@ -98,6 +100,7 @@ void sensors_off()
     ESP_LOGI(TAG, "sensors_off");
     bme680_p.reset();
     bh1750_p.reset();
+    adc_p.reset();
 }
 
 void shootdown()
@@ -133,6 +136,12 @@ void init()
                                                 []()
                                                 { xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); });
 
+    adc_p = std::make_unique<adc::sensor>([](auto value)
+                                          {
+                                                    collect_sensors_data("bat", value);
+                                                    xEventGroupSetBits(app_main_event_group, GOT_BAT); },
+                                          []()
+                                          { xEventGroupSetBits(app_main_event_group, GOT_BAT); });
     sleep_timer = std::make_unique<idf::esp_timer::ESPTimer>([]()
                                                              { shootdown(); });
     /* Initialize TCP/IP */
@@ -171,7 +180,7 @@ extern "C" void app_main(void)
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);
-    xEventGroupWaitBits(app_main_event_group, GOT_SENSOR_DATA | GOT_LIGHTING_DATA /* | GOT_BAT*/, pdTRUE, pdTRUE, portMAX_DELAY);
+    xEventGroupWaitBits(app_main_event_group, GOT_SENSOR_DATA | GOT_LIGHTING_DATA | GOT_BAT, pdTRUE, pdTRUE, portMAX_DELAY);
     sensors_off();
     xEventGroupWaitBits(app_main_event_group, GOT_IP, pdTRUE, pdTRUE, portMAX_DELAY);
 
