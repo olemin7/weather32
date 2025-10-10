@@ -31,14 +31,16 @@ namespace adc
             get_value();
                 if(count_--){
                     timer_p_->start(std::chrono::milliseconds(CONFIG_ADC_READ_TIMEOUT));
-                             }else{
+                }
+                else
+                {
                     if(average_.get_size() == 0){
                         on_error();
                     }else{
-                        const auto average = average_.get_average();
+                        auto average = average_.get_average();
                         ESP_LOGI(TAG, "ADC count: %d, average: %d", average_.get_size(), average);
-                        on_success(average);
-                    }                    
+                        on_success(std::move(average));
+                    }
                 }
         }, TAG);
         

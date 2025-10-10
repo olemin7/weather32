@@ -8,13 +8,13 @@
 
 namespace adc
 {
-    using sensor_value_t = uint8_t;
+    using sensor_value_t = int;
     class sensor
     {
     private:
         int count_;
         std::unique_ptr<idf::esp_timer::ESPTimer> timer_p_;
-        utils::average<int> average_;
+        utils::average<sensor_value_t> average_;
         adc_oneshot_unit_handle_t adc_handle_;
 
         bool get_value();

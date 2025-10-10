@@ -82,13 +82,12 @@ menu "App Configuration"
 
     menu "Board"
         config I2C_MASTER_SCL_IO
-                int
+                int "I2C_MASTER_SCL_IO"
                 default 9
-                prompt "I2C_MASTER_SCL_IO"
+
         config I2C_MASTER_SDA_IO
-                int
+                int "I2C_MASTER_SDA_IO"
                 default 8
-                prompt "I2C_MASTER_SDA_IO"
     endmenu
 
 
@@ -119,11 +118,31 @@ menu "App Configuration"
         
     endmenu
 
+    menu "Battery"
+        config BATTERY_MAX
+            int "value 100% (4.2V)"
+            default 4095
+        config BATTERY_MIN
+            int "value 0%(3.2V)"
+            default 0
+    endmenu
+
     menu "Deep Sleep"
         config DEEP_SLEEP_ENABLED
-            bool
+            bool "Enable Deep Sleep"
             default y
-            prompt "Enable Deep Sleep"
+        config DEEP_SLEEP_TIMEOUT_S
+            int "Deep Sleep timeout (sec)"
+            default 7
+        config DEEP_SLEEP_DURATION_S
+            int "Deep Sleep duration (sec)"
+            default 900
+        config DEEP_SLEEP_LOWBAT
+            int "value in % recognised as low bat"
+            default 30
+        config DEEP_SLEEP_LOWBAT_DURATION_S
+            int "Deep Sleep duration when LOW BAT(sec)"
+            default 1800
     endmenu
 
 endmenu

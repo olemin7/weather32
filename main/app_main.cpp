@@ -53,6 +53,8 @@ constexpr int GOT_LIGHTING_DATA = BIT2;
 constexpr int GOT_BAT = BIT3;
 constexpr int MQTT_EMPTY = BIT4;
 
+auto deep_sleep_duration = std::chrono::seconds(CONFIG_DEEP_SLEEP_DURATION_S);
+
 template <typename T>
 void collect_sensors_data(const std::string &field, T value)
 {
@@ -83,18 +85,6 @@ static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t
     blink::stop(blink::BLINK_CONNECTING);
 }
 
-constexpr auto BOOT_BUTTON_NUM = GPIO_NUM_9;
-#define BUTTON_ACTIVE_LEVEL 0
-static void button_event_cb(void *arg, void *data)
-{
-    blink::init();
-    ESP_LOGW(TAG, "REQ REPROVISION");
-    blink::start(blink::BLINK_FACTORY_RESET);
-    ESP_ERROR_CHECK(provision_reset());
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    esp_restart();
-}
-
 void sensors_off()
 {
     ESP_LOGI(TAG, "sensors_off");
@@ -108,7 +98,7 @@ void shootdown()
     ESP_LOGI(TAG, "SHUTDOWN");
     sensors_off();
     ESP_LOGI(TAG, "entering deep sleep ");
-    deepsleep::sleep(10s);
+    deepsleep::sleep(deep_sleep_duration);
 }
 
 void init()
@@ -137,9 +127,14 @@ void init()
                                                 { xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); });
 
     adc_p = std::make_unique<adc::sensor>([](auto value)
-                                          {
-                                                    collect_sensors_data("bat", value);
-                                                    xEventGroupSetBits(app_main_event_group, GOT_BAT); },
+                                          { const auto persentage = utils::transform_range<decltype(value), uint8_t>(CONFIG_BATTERY_MAX, CONFIG_BATTERY_MIN,0,100,value);
+                                            collect_sensors_data("bat_persentage", persentage);
+                                            collect_sensors_data("adc", value);
+                                            if (CONFIG_DEEP_SLEEP_LOWBAT > persentage){
+                                                ESP_LOGW(TAG, "Low BAT, %u",persentage);
+                                                deep_sleep_duration = std::chrono::seconds(CONFIG_DEEP_SLEEP_LOWBAT_DURATION_S);
+                                            }
+                                            xEventGroupSetBits(app_main_event_group, GOT_BAT); },
                                           []()
                                           { xEventGroupSetBits(app_main_event_group, GOT_BAT); });
     sleep_timer = std::make_unique<idf::esp_timer::ESPTimer>([]()
@@ -149,18 +144,25 @@ void init()
 
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_got_ip_handler, NULL));
-    button_config_t btn_cfg = {
-        .type = BUTTON_TYPE_GPIO,
-        .long_press_time = 5 * 1000,
-        .short_press_time = 0,
-        .gpio_button_config = {
-            .gpio_num = BOOT_BUTTON_NUM,
-            .active_level = BUTTON_ACTIVE_LEVEL,
-        },
-    };
-    button_handle_t btn_ptr = iot_button_create(&btn_cfg);
-    assert(btn_ptr);
-    ESP_ERROR_CHECK(iot_button_register_cb(btn_ptr, BUTTON_LONG_PRESS_START, button_event_cb, NULL));
+
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;        // No interrupt
+    io_conf.mode = GPIO_MODE_INPUT;               // Set as input
+    io_conf.pin_bit_mask = (1ULL << GPIO_NUM_1);  // Select the pin
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE; // No pull-down
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;      // Enable pull-up
+
+    // Apply the configuration
+    gpio_config(&io_conf);
+    if ((gpio_get_level(GPIO_NUM_1) == 0) && (deepsleep::get_boot_count() == 0))
+    {
+        ESP_LOGW(TAG, "Service swith after power reset");
+        blink::init();
+        blink::start(blink::BLINK_FACTORY_RESET);
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        ESP_ERROR_CHECK(provision_reset());
+    }
 }
 
 /************************************
@@ -176,7 +178,7 @@ extern "C" void app_main(void)
 
     provision_main();
     ESP_LOGI(TAG, "Started");
-    sleep_timer->start(7s);
+    sleep_timer->start(std::chrono::seconds(CONFIG_DEEP_SLEEP_TIMEOUT_S));
     //------------------------------
 
     blink::start(blink::BLINK_CONNECTING);

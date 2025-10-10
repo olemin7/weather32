@@ -1,4 +1,4 @@
-menu "adc"
+menu "ADC"
     config ADC_READ_COUNT
         int
         default 5

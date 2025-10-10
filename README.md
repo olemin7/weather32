@@ -14,7 +14,7 @@ https://github.com/espressif/esp-iot-solution
 # esp32c3_supermini
     Pin     | ADC | func |
 GPIO_NUM_0  | A0  |      |photoresistor
-GPIO_NUM_1  | A1  |      |
+GPIO_NUM_1  | A1  |      |service switch
 GPIO_NUM_2  | A2  |      |
 GPIO_NUM_3  | A3  |      |
 GPIO_NUM_4  | A4  | SCK  | 
