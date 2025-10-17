@@ -17,14 +17,20 @@ namespace adc
         adc_oneshot_unit_init_cfg_t init_config1 = {
             .unit_id = ADC_UNIT_1,
         };
-        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc_handle_));
+        if (adc_oneshot_new_unit(&init_config1, &adc_handle_) != ESP_OK) {
+            on_error();
+            return;
+        }
 
         adc_oneshot_chan_cfg_t config = {
             .atten = ADC_ATTEN_DB_12,
             .bitwidth = ADC_BITWIDTH_DEFAULT,
         };
 
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle_, ADC_CHANNEL_0, &config));
+        if (adc_oneshot_config_channel(adc_handle_, ADC_CHANNEL_0, &config) != ESP_OK) {
+            on_error();
+            return;
+        }
 
         timer_p_ = std::make_unique<idf::esp_timer::ESPTimer>([this, on_success, on_error]() {
           
