@@ -75,7 +75,8 @@ static void event_got_ip_handler(void *arg, esp_event_base_t event_base, int32_t
     device_info.sw = DEVICE_SW;
     device_info.mac = utils::get_mac();
 
-    mqtt_mng = std::make_unique<mqtt::CMQTTWrapper>(device_info);
+    mqtt_mng = std::make_unique<mqtt::CMQTTWrapper>(device_info, nullptr,
+                                                    std::make_unique<mqtt::connection_state_cb_t>([](auto connected) {}));
     int rssi = -1;
     if (ESP_OK == esp_wifi_sta_get_rssi(&rssi))
     {
@@ -127,18 +128,22 @@ void init()
                                                 { xEventGroupSetBits(app_main_event_group, GOT_LIGHTING_DATA); });
 
     adc_p = std::make_unique<adc::sensor>([](auto value)
-                                          { const auto persentage = utils::transform_range<decltype(value), uint8_t>(CONFIG_BATTERY_MAX, CONFIG_BATTERY_MIN,0,100,value);
-                                            collect_sensors_data("bat_persentage", persentage);
-                                            collect_sensors_data("adc", value);
-                                            if (CONFIG_DEEP_SLEEP_LOWBAT > persentage){
-                                                ESP_LOGW(TAG, "Low BAT, %u",persentage);
-                                                deep_sleep_duration = std::chrono::seconds(CONFIG_DEEP_SLEEP_LOWBAT_DURATION_S);
-                                            }
+                                          { const auto persentage = utils::transform_range<decltype(value), uint8_t>( CONFIG_BATTERY_MIN,CONFIG_BATTERY_MAX,0,100,value);
+        ESP_LOGI(TAG, "bat_persentage %d", persentage);
+        collect_sensors_data("bat_persentage", persentage);
+        collect_sensors_data("adc", value);
+        if (CONFIG_DEEP_SLEEP_LOWBAT > persentage)
+        {
+            ESP_LOGW(TAG, "Low BAT, %u", persentage);
+            deep_sleep_duration = std::chrono::seconds(CONFIG_DEEP_SLEEP_LOWBAT_DURATION_S);
+        }
                                             xEventGroupSetBits(app_main_event_group, GOT_BAT); },
                                           []()
                                           { xEventGroupSetBits(app_main_event_group, GOT_BAT); });
     sleep_timer = std::make_unique<idf::esp_timer::ESPTimer>([]()
-                                                             { shootdown(); });
+                                                             { 
+                                                                ESP_LOGW(TAG, "Timeout");
+                                                                shootdown(); });
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -154,14 +159,18 @@ void init()
 
     // Apply the configuration
     gpio_config(&io_conf);
-    if ((gpio_get_level(GPIO_NUM_1) == 0) && (deepsleep::get_boot_count() == 0))
+    if (deepsleep::get_boot_count() == 0)
     {
-        ESP_LOGW(TAG, "Service swith after power reset");
+        ESP_LOGW(TAG, "The firs boot");
         blink::init();
-        blink::start(blink::BLINK_FACTORY_RESET);
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-        ESP_ERROR_CHECK(provision_reset());
+        if ((gpio_get_level(GPIO_NUM_1) == 0))
+        {
+            ESP_LOGW(TAG, "Service swith after power reset");
+            blink::start(blink::BLINK_FACTORY_RESET);
+            wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+            ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+            ESP_ERROR_CHECK(provision_reset());
+        }
     }
 }
 
@@ -194,7 +203,7 @@ extern "C" void app_main(void)
             mqtt_mng->publish_device_brunch(pair.first, pair.second);
         }
     }
-
+    mqtt_mng->publish_device_brunch("sleep", deep_sleep_duration.count());
     mqtt_mng->is_all_send_cb([]()
                              { xEventGroupSetBits(app_main_event_group, MQTT_EMPTY); });
     xEventGroupWaitBits(app_main_event_group, MQTT_EMPTY, pdTRUE, pdTRUE, portMAX_DELAY);

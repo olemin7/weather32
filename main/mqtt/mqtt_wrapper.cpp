@@ -52,21 +52,31 @@ namespace mqtt
         return url;
     }
 
-    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info)
+    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info, command_cb_t device_cmd_cb, connection_state_cb_ptr_t connection_state_cb)
         : imqtt::Client(imqtt::BrokerConfiguration{.address = {imqtt::URI{get_config_url()}},
                                                    .security = imqtt::Insecure{}},
                         {}, {.connection = {.disable_auto_reconnect = true}}),
           device_info_(device_info),
-          device_cmd_("cmd/" + device_info_.mac), brodcast_cmd_("cmd")
+          device_cmd_("cmd/" + device_info_.mac),
+          brodcast_cmd_("cmd"),
+          device_cmd_cb_(std::move(device_cmd_cb)),
+          connection_state_cb_(std::move(connection_state_cb))
+
     {
         ESP_LOGI(TAG, "CONFIG_BROKER_URL %s", CONFIG_BROKER_URL);
     };
 
-    CMQTTWrapper::CMQTTWrapper(device_info_t &device_info, command_cb_t &&device_cmd_cb)
-        : CMQTTWrapper(device_info)
+    CMQTTWrapper ::~CMQTTWrapper()
     {
-        device_cmd_cb_ = std::make_unique<command_cb_t>(device_cmd_cb);
-    };
+
+        if (!is_all_send())
+        {
+            for (auto &id : send_mgs_list_)
+            {
+                ESP_LOGW(TAG, "wasn`t send msg id=%d", id);
+            }
+        }
+    }
 
     void CMQTTWrapper::on_connected(esp_mqtt_event_handle_t const /*event*/)
     {
@@ -74,11 +84,19 @@ namespace mqtt
         subscribe(device_cmd_.get(), QoS::ExactlyOnce);
         subscribe(brodcast_cmd_.get(), QoS::ExactlyOnce);
         send_advertisement();
+        if (connection_state_cb_)
+        {
+            (*connection_state_cb_)(true);
+        }
     }
 
     void CMQTTWrapper::on_disconnected(const esp_mqtt_event_handle_t event)
     {
         ESP_LOGI(TAG, "disconnected");
+        if (connection_state_cb_)
+        {
+            (*connection_state_cb_)(false);
+        }
     }
 
     void CMQTTWrapper::publish(const std::string &topic, const std::string &message)

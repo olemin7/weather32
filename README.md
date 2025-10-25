@@ -23,7 +23,7 @@ GND
 5V
 -------------------------------------
 GPIO_NUM_5  | A5  | MISO |
-GPIO_NUM_6  |     | MOSI | bme680 SDA
+GPIO_NUM_6  |     | MOSI | bme680 SDA !!! swap in new PCB version
 GPIO_NUM_7  |     | SS   | bme680 SDL
 GPIO_NUM_8  |     | SDA  | LED           
 GPIO_NUM_9  |     | SDL  | BOOT_BUTTON   
@@ -84,10 +84,25 @@ todo boot btn to go provision mode?
 https://esp-idf-lib.readthedocs.io/en/latest/index.html
 git clone git@github.com:UncleRus/esp-idf-lib.git
 
-[adc]
+# TP4056  li ion charger
+max 4.2
+min 2.5
+## li ion
+max 4.2
+min 3.0
+
+## attenuation
+ADC_ATTEN_DB_0   100 mV ~ 950 mV
+ADC_ATTEN_DB_2_5 100 mV ~ 1250 mV
+ADC_ATTEN_DB_6   150 mV ~ 1750 mV
+ADC_ATTEN_DB_12  150 mV ~ 2450 mV
+
 https://docs.espressif.com/projects/esp-idf/en/v4.4.8/esp32/api-reference/peripherals/adc.html
 #photoresistor (GND ) -photoresistor- (A0) -resistor 10k- (+3.3)
 
+
+# LiIon
+min 
 https://esp32tutorials.com/esp32-esp-idf-max7219-dot-matrix-display
 
 

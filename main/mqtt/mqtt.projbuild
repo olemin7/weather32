@@ -1,7 +1,7 @@
 menu "MQTT Configuration"
     config BROKER_URL
         string "MQTT Broker URL"
-        default "mqtt://nas.local"
+        default "mqtt://192.168.1.2"
         help
             URL of the broker to connect to
                 

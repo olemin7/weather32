@@ -83,6 +83,9 @@
         "source_location": "cpp",
         "stdfloat": "cpp",
         "typeindex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "csignal": "cpp",
+        "any": "cpp",
+        "unordered_set": "cpp"
     }
 }

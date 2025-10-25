@@ -110,10 +110,10 @@ menu "App Configuration"
     menu "Battery"
         config BATTERY_MAX
             int "value 100% (4.2V)"
-            default 4095
+            default 2940
         config BATTERY_MIN
-            int "value 0%(3.2V)"
-            default 0
+            int "value 0%(3.0V)"
+            default 2053
     endmenu
 
     menu "Deep Sleep"
