@@ -21,17 +21,17 @@
 #include "esp_timer_cxx.hpp"
 #include <esp_event.h>
 
-#include "json_helper.hpp"
-#include "provision.hpp"
-#include "mqtt/mqtt_wrapper.hpp"
-#include "blink.hpp"
+#include "libs/json_helper.hpp"
+#include "libs/provision.hpp"
+#include "libs/mqtt/mqtt_wrapper.hpp"
+#include "libs/blink.hpp"
 #include "iot_button.h"
-#include "sensors/bme680.hpp"
-#include "sensors/bh1750.hpp"
-#include "sensors/adc.hpp"
-#include "utils/kvs.hpp"
-#include "utils/utils.hpp"
-#include "deepsleep.hpp"
+#include "libs/sensors/bme680.hpp"
+#include "libs/sensors/bh1750.hpp"
+#include "libs/sensors/adc.hpp"
+#include "libs/utils/kvs.hpp"
+#include "libs/utils/utils.hpp"
+#include "libs/deepsleep.hpp"
 
 using namespace std::chrono_literals;
 static const char *TAG = "main";

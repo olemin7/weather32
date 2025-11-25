@@ -1,5 +1,6 @@
 build/
 managed_components/
+main/libs/
 sdkconfig.old
 *.b#*
 *.s#*

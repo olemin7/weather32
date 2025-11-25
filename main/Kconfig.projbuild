@@ -78,7 +78,7 @@ menu "App Configuration"
             This enables BLE 4.2 features for Bluedroid.
     endmenu
     
-    rsource "mqtt/mqtt.projbuild"
+    rsource "libs/mqtt/mqtt.projbuild"
 
     menu "Sensors"
         # config SENSORS_KA_PERIOD_S
@@ -101,9 +101,9 @@ menu "App Configuration"
         #     int "LIGHTING_MAX_RAW"
         #     default 4096
 
-        rsource "sensors/adc.projbuild"
-        rsource "sensors/bme680.projbuild"
-        rsource "sensors/bh1750.projbuild"
+        rsource "libs/sensors/adc.projbuild"
+        rsource "libs/sensors/bme680.projbuild"
+        rsource "libs/sensors/bh1750.projbuild"
         
     endmenu
 

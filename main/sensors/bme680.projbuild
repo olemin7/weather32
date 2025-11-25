@@ -1,8 +1,0 @@
-menu "BME680"
-    config BME680_I2C_ADDRESS_x77
-        bool
-        default y
-        prompt "use 0x77 instead 0x76"
-endmenu
-
-

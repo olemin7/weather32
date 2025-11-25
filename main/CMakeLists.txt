@@ -1,20 +1,20 @@
 idf_component_register(
     SRCS
         "app_main.cpp" 
-        "mqtt/mqtt_wrapper.cpp" 
-        "provision.cpp"
-        "blink.cpp" 
-        "deepsleep.cpp"
-        "sensors/bme680.cpp"
-        "sensors/bh1750.cpp"
-        "sensors/adc.cpp"
-        "utils/utils.cpp" 
-        "utils/kvs.cpp"
+        "libs/mqtt/mqtt_wrapper.cpp" 
+        "libs/provision.cpp"
+        "libs/blink.cpp" 
+        "libs/deepsleep.cpp"
+        "libs/sensors/bme680.cpp"
+        "libs/sensors/bh1750.cpp"
+        "libs/sensors/adc.cpp"
+        "libs/utils/utils.cpp" 
+        "libs/utils/kvs.cpp"
         #-----------------
-        "test/tst_utils.cpp"
+        "libs/test/tst_utils.cpp"
        
     INCLUDE_DIRS
-        "." 
+        "."
     REQUIRES
         nvs_flash 
         wifi_provisioning 
