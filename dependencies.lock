@@ -96,6 +96,6 @@ direct_dependencies:
 - espressif/led_indicator
 - espressif/network_provisioning
 - idf
-manifest_hash: 1de884c344c09b8b41849b3d22d0fb72066a3f9c238e32eedbfa9d9fc49453f4
+manifest_hash: adb1dc1721f81df774745f52a1817c4db9f67f55e4a9fc1303e6d5086a2d3b83
 target: esp32c3
 version: 2.0.0

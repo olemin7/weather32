@@ -21,10 +21,10 @@
 #include "esp_timer_cxx.hpp"
 #include <esp_event.h>
 
-#include "libs/json_helper.hpp"
-#include "libs/provision.hpp"
-#include "libs/mqtt/mqtt_wrapper.hpp"
-#include "libs/blink.hpp"
+#include "utils/json_helper.hpp"
+#include "provision/provision.hpp"
+#include "mqtt_tools/mqtt_wrapper.hpp"
+#include "display/blink.hpp"
 #include "iot_button.h"
 #include "libs/sensors/bme680.hpp"
 #include "libs/sensors/bh1750.hpp"

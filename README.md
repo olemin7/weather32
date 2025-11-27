@@ -80,9 +80,12 @@ https://github.com/nopnop2002/esp-idf-json/tree/master/json-basic-object
 todo boot btn to go provision mode?
 
 
-[esp-idf-lib]
+# esp-idf-lib
 https://esp-idf-lib.readthedocs.io/en/latest/index.html
 git clone git@github.com:UncleRus/esp-idf-lib.git
+
+# dependency
+https://github.com/olemin7/esp32_idf_libs
 
 # TP4056  li ion charger
 max 4.2

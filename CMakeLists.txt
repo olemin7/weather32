@@ -16,6 +16,7 @@ set(EXTRA_COMPONENT_DIRS
     ${espidflib_SOURCE_DIR}/components/bme680
     ${espidflib_SOURCE_DIR}/components/bh1750
     ${espidflib_SOURCE_DIR}/components/esp_idf_lib_helpers
+    main/libs/mqtt_tools
     )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
