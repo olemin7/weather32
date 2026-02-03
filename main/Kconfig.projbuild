@@ -1,6 +1,7 @@
 menu "App Configuration"
-    rsource "libs/provision/provision.projbuild"  
-    rsource "libs/mqtt_tools/mqtt.projbuild"
+    
+    rsource "$(MY_ESP_LIBRARIES_PATH)/provision/provision.projbuild"  
+    rsource "$(MY_ESP_LIBRARIES_PATH)/mqtt_tools/mqtt.projbuild"
 
     menu "Sensors"
         # config SENSORS_KA_PERIOD_S
@@ -23,9 +24,9 @@ menu "App Configuration"
         #     int "LIGHTING_MAX_RAW"
         #     default 4096
 
-        rsource "libs/sensors/adc.projbuild"
-        rsource "libs/sensors/bme680.projbuild"
-        rsource "libs/sensors/bh1750.projbuild"
+        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/adc.projbuild"
+        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/bme680.projbuild"
+        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/bh1750.projbuild"
         
     endmenu
 

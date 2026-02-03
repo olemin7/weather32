@@ -1,20 +1,20 @@
 idf_component_register(
     SRCS
         "app_main.cpp" 
-        "libs/provision/provision.cpp"
-        "libs/display/blink.cpp" 
-        "libs/deepsleep.cpp"
-        "libs/sensors/bme680.cpp"
-        "libs/sensors/bh1750.cpp"
-        "libs/sensors/adc.cpp"
-        "libs/utils/utils.cpp" 
-        "libs/utils/kvs.cpp"
+        "${my_idf_libs_SOURCE_DIR}/provision/provision.cpp"
+        "${my_idf_libs_SOURCE_DIR}/display/blink.cpp" 
+        "${my_idf_libs_SOURCE_DIR}/deepsleep.cpp"
+        "${my_idf_libs_SOURCE_DIR}/sensors/bme680.cpp"
+        "${my_idf_libs_SOURCE_DIR}/sensors/bh1750.cpp"
+        "${my_idf_libs_SOURCE_DIR}/sensors/adc.cpp"
+        "${my_idf_libs_SOURCE_DIR}/utils/utils.cpp" 
+        "${my_idf_libs_SOURCE_DIR}/utils/kvs.cpp"
         #-----------------
-        "libs/test/tst_utils.cpp"
+        "${my_idf_libs_SOURCE_DIR}/test/tst_utils.cpp"
        
     INCLUDE_DIRS
         "."
-        "libs"
+        ${my_idf_libs_SOURCE_DIR}
     REQUIRES
         nvs_flash 
         wifi_provisioning 
@@ -25,6 +25,9 @@ idf_component_register(
         spi_flash
         unity
         esp_http_server
+        i2cdev
         bme680
         bh1750
     )
+
+target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)

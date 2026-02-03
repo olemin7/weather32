@@ -1,37 +1,35 @@
-#include <memory>
-#include <stdio.h>
-#include <inttypes.h>
-#include <chrono>
-#include <iostream>
-#include <math.h>
-#include <string>
-#include <map>
-
-#include "rom/rtc.h"
-#include "sdkconfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
+#include <esp_event.h>
 #include <esp_log.h>
 #include <esp_wifi.h>
-#include "freertos/queue.h"
+#include <inttypes.h>
+#include <math.h>
+#include <stdio.h>
 
-#include "esp_exception.hpp"
-#include "esp_err.h"
-#include "esp_timer_cxx.hpp"
-#include <esp_event.h>
+#include <chrono>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
 
-#include "utils/json_helper.hpp"
-#include "provision/provision.hpp"
-#include "mqtt_tools/mqtt_wrapper.hpp"
+#include "deepsleep.hpp"
 #include "display/blink.hpp"
+#include "esp_err.h"
+#include "esp_exception.hpp"
+#include "esp_timer_cxx.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include "iot_button.h"
-#include "libs/sensors/bme680.hpp"
-#include "libs/sensors/bh1750.hpp"
-#include "libs/sensors/adc.hpp"
-#include "libs/utils/kvs.hpp"
-#include "libs/utils/utils.hpp"
-#include "libs/deepsleep.hpp"
+#include "mqtt_tools/mqtt_wrapper.hpp"
+#include "provision/provision.hpp"
+#include "rom/rtc.h"
+#include "sdkconfig.h"
+#include "sensors/adc.hpp"
+#include "sensors/bh1750.hpp"
+#include "sensors/bme680.hpp"
+#include "utils/json_helper.hpp"
+#include "utils/kvs.hpp"
+#include "utils/utils.hpp"
 
 using namespace std::chrono_literals;
 static const char *TAG = "main";

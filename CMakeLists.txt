@@ -8,7 +8,22 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/UncleRus/esp-idf-lib.git
 )
 
-FetchContent_MakeAvailable(espidflib)
+#to be able update libraries
+if(DEFINED ENV{MY_ESP_LIBRARIES_LOCAL})
+  FetchContent_Declare(
+    my_idf_libs
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../esp32_idf_libs
+  )
+else()
+  FetchContent_Declare(
+    my_idf_libs
+    GIT_REPOSITORY git@github.com:olemin7/esp32_idf_libs.git
+    GIT_TAG main  # Replace with your desired tag
+  )
+endif()
+
+
+FetchContent_MakeAvailable(espidflib my_idf_libs)
 
 set(EXTRA_COMPONENT_DIRS 
     ${EXTRA_COMPONENT_DIRS}
@@ -16,7 +31,7 @@ set(EXTRA_COMPONENT_DIRS
     ${espidflib_SOURCE_DIR}/components/bme680
     ${espidflib_SOURCE_DIR}/components/bh1750
     ${espidflib_SOURCE_DIR}/components/esp_idf_lib_helpers
-    main/libs/mqtt_tools
+    ${my_idf_libs_SOURCE_DIR}/mqtt_tools
     )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
