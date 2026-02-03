@@ -14,7 +14,7 @@ idf_component_register(
        
     INCLUDE_DIRS
         "."
-        ${my_idf_libs_SOURCE_DIR}
+        "${my_idf_libs_SOURCE_DIR}"
     REQUIRES
         nvs_flash 
         wifi_provisioning 

@@ -1,32 +1,12 @@
 menu "App Configuration"
     
-    rsource "$(MY_ESP_LIBRARIES_PATH)/provision/provision.projbuild"  
-    rsource "$(MY_ESP_LIBRARIES_PATH)/mqtt_tools/mqtt.projbuild"
+    rsource "../$(MY_ESP_LIBRARIES_PATH)/provision/provision.projbuild"  
+    rsource "../$(MY_ESP_LIBRARIES_PATH)/mqtt_tools/mqtt.projbuild"
 
     menu "Sensors"
-        # config SENSORS_KA_PERIOD_S
-        #     int "SENSORS_KA_PERIOD_S"
-        #     default 600
-        #     help
-        #         sensor keep alive period sec, resend value if it unchanged
-        # config LIGHTING_REFRESH
-        #     int "LIGHTING_REFRESH"
-        #     default 200
-        #     help
-        #         LIGHTING_REFRESH ms
-        # config LIGHTING_THRESHOLD
-        #     int "LIGHTING_THRESHOLD"
-        #     default 10
-        # config LIGHTING_MIN_RAW
-        #     int "LIGHTING_MIN_RAW"
-        #     default 10
-        # config LIGHTING_MAX_RAW
-        #     int "LIGHTING_MAX_RAW"
-        #     default 4096
-
-        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/adc.projbuild"
-        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/bme680.projbuild"
-        rsource "$(MY_ESP_LIBRARIES_PATH)/sensors/bh1750.projbuild"
+        rsource "../$(MY_ESP_LIBRARIES_PATH)/sensors/adc.projbuild"
+        rsource "../$(MY_ESP_LIBRARIES_PATH)/sensors/bme680.projbuild"
+        rsource "../$(MY_ESP_LIBRARIES_PATH)/sensors/bh1750.projbuild"
         
     endmenu
 

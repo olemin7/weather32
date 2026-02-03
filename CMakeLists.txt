@@ -12,7 +12,7 @@ FetchContent_Declare(
 if(DEFINED ENV{MY_ESP_LIBRARIES_LOCAL})
   FetchContent_Declare(
     my_idf_libs
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../esp32_idf_libs
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}$ENV{MY_ESP_LIBRARIES_PATH}
   )
 else()
   FetchContent_Declare(

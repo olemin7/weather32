@@ -5,3 +5,4 @@ sdkconfig.old
 *.s#*
 *.swp
 .cache/
+tmp/

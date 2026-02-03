@@ -92,8 +92,8 @@
   "idf.toolsPath": "/home/oleksandrminenko/.espressif",
   "idf.pythonInstallPath": "/usr/bin/python3",
   "terminal.integrated.env.linux": {
-    "MY_ESP_LIBRARIES_LOCAL": "+",
-    "MY_ESP_LIBRARIES_PATH": "../../esp32_idf_libs"
-    // "MY_ESP_LIBRARIES_PATH": "../build/_deps/my_idf_libs-src"
+    // "MY_ESP_LIBRARIES_LOCAL": "+",
+    // "MY_ESP_LIBRARIES_PATH": "/tmp/esp32_idf_libs"
+    "MY_ESP_LIBRARIES_PATH": "/build/_deps/my_idf_libs-src"
   }
 }
